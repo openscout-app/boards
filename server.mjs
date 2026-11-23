@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 // boards-plugin/server.ts
 import { existsSync as existsSync3, readFileSync as readFileSync3 } from "node:fs";
 import { dirname as dirname3, join as join3 } from "node:path";
