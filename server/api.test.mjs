@@ -103,6 +103,19 @@ test("a runtime without /v1/boards reads as too old, with rooms still there", as
   } finally { await old.close(); use(fake); }
 });
 
+test("a card links to the room it came from, and only to a room Scout follows", async () => {
+  const room = (r, id) => r.body.cards.find((c) => c.workId === id).roomId;
+  const r = await get("/api/board");
+  assert.equal(room(r, "work-102"), "conv-work", "a Board task finds its channel from its hand-offs");
+  assert.equal(room(r, "work-105"), "conv-decisions", "a card from a followed conversation links to it");
+  assert.equal(room(r, "work-104"), null, "a conversation Scout doesn't follow as a room links nowhere");
+  assert.equal(room(r, "work-101"), null);
+  const asked = () => fake.calls.filter((c) => c.path === "/v1/integrations/vercel-board/handoffs" && c.query.task === "m3").length;
+  const before = asked();
+  await get("/api/board");
+  assert.equal(asked(), before, "a task's room is asked once, then kept");
+});
+
 test("a runtime without the Board adapter has no rooms", async () => {
   const bare = await fakeRuntime({ rooms: false });
   use(bare);
@@ -110,6 +123,9 @@ test("a runtime without the Board adapter has no rooms", async () => {
     const s = await get("/api/state");
     assert.equal(s.body.rooms.supported, false);
     assert.equal((await get("/api/room", { conversationId: "conv-work" })).body.error, "rooms_unsupported");
+    const b = await get("/api/board");
+    assert.equal(b.status, 200, "the board still reads without rooms");
+    assert.ok(b.body.cards.every((c) => c.roomId === null));
   } finally { await bare.close(); use(fake); }
 });
 

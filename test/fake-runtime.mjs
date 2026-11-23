@@ -65,9 +65,9 @@ export function fixtures(now = Date.now()) {
         parentId: "work-100", parentTitle: "Boards as its own app", updatedAt: now - 1 * H, lastMeaningfulAt: now - 1 * H,
       }),
       card("work-102", "ready", "Check the settings page at phone width", {
-        source: { adapterId: "vercel-board", instanceId: "conn-1", workItemId: "msg-7", url: null },
+        source: { adapterId: "vercel-board", instanceId: "conn-1", workItemId: "m3", url: null },
       }),
-      card("work-105", "waiting", "Pick the default port", { state: "waiting", ...operator, revision: 2, summary: "Waiting on a decision about the port range.", updatedAt: now - 3 * H, lastMeaningfulAt: now - 3 * H }),
+      card("work-105", "waiting", "Pick the default port", { state: "waiting", ...operator, conversationId: "conv-decisions", revision: 2, summary: "Waiting on a decision about the port range.", updatedAt: now - 3 * H, lastMeaningfulAt: now - 3 * H }),
       card("work-101", "backlog", "Write the first-run copy for the empty board", { createdAt: now - 5 * H, updatedAt: now - 5 * H, lastMeaningfulAt: now - 5 * H }),
       card("work-107", "done", "Serve the page on loopback only", { state: "done", acceptanceState: "accepted", revision: 5, ownerId: "builder.boards", ownerName: "builder", updatedAt: now - 26 * H, lastMeaningfulAt: now - 26 * H }),
     ],
@@ -141,7 +141,10 @@ export function fakeRuntime({ port = 0, boards = true, rooms = true, now } = {})
     if (p === "/v1/integrations/vercel-board/messages") {
       return send(res, 200, { messages: data.messages.filter((m) => m.channel === u.searchParams.get("channel")) });
     }
-    if (p === "/v1/integrations/vercel-board/handoffs") return send(res, 200, { handoffs: data.handoffs });
+    if (p === "/v1/integrations/vercel-board/handoffs") {
+      const task = u.searchParams.get("task");
+      return send(res, 200, { handoffs: task ? data.handoffs.filter((h) => h.taskId === task) : data.handoffs });
+    }
     if (p === "/v1/endpoints") return send(res, 200, { endpoints: data.endpoints });
     if (p === "/v1/work/moves") return send(res, 200, { moves: data.moves.filter((m) => m.itemId === u.searchParams.get("workId")) });
     if (p === "/v1/work/move" && req.method === "POST") {

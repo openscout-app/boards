@@ -27,7 +27,8 @@ function CardView({ card, selected, onOpen, onMenu, menuOpen, draggable, room, o
       draggable={draggable}
       onDragStart={(e) => { e.dataTransfer.setData("text/x-scout-work", card.workId); e.dataTransfer.effectAllowed = "move"; }}
       onClick={onOpen}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      // keys on the card itself; a button inside it (the room link, the move menu) handles its own
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(); } }}
     >
       <div className="card-title">{card.title}</div>
       <div className="card-meta">

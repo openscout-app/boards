@@ -89,6 +89,7 @@ async function boardTaskRoom(list, rooms, source) {
     const room = first?.channel ? rooms.find((r) => r.connectionId === conn.id && r.channel === first.channel) : null;
     roomId = room?.conversationId || null;
   }
+  if (roomCache.size >= 5000) roomCache.clear(); // a ceiling for a server left running for months
   roomCache.set(key, { roomId, at: Date.now() });
   return roomId;
 }
