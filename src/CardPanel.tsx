@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Board, Card, Column, MoveDecision, MoveRecord, MoveResponse, Verdict } from "./types";
 import type { Source } from "./source";
 import { targetsOf } from "./board";
-import { ago, label, ownerOf, when } from "./util";
+import { ago, label, ownerOf, trackerOf, when } from "./util";
 import { Arrow, External } from "./icons";
 
 const VERDICT: Record<Verdict, string> = {
@@ -82,6 +82,7 @@ export function CardPanel({ src, board, card, onMove, toast }: {
 }) {
   const column = board.columns.find((c) => c.id === card.column);
   const targets = targetsOf(board, card);
+  const tracker = trackerOf(card);
   const [claiming, setClaiming] = useState(false);
   const run = card.activeFlight;
   const claim = async () => {
@@ -112,23 +113,36 @@ export function CardPanel({ src, board, card, onMove, toast }: {
         <Fact k="Created">{when(card.createdAt)}</Fact>
         <Fact k="Work id"><code>{card.workId}</code></Fact>
       </dl>
-      <section className="panel-section">
-        <h4>Move to</h4>
-        {targets.length
-          ? <div className="row wrap">{targets.map((t) => <button key={t.id} type="button" className="btn" onClick={() => onMove(t)}>{t.name}</button>)}</div>
-          : <p className="dim">The board has no move from {column?.name || "here"}.</p>}
-      </section>
+      {tracker ? (
+        <section className="panel-section">
+          <h4>Moves</h4>
+          <p className="dim">
+            This card follows a task on {tracker}, which decides where it sits and who works it. Scout updates it from there.
+            {card.reviewPending ? " Its review below is Scout's own." : ""}
+          </p>
+          {card.source?.url ? <a href={card.source.url} target="_blank" rel="noreferrer">Open on {tracker} <External /></a> : null}
+        </section>
+      ) : (
+        <section className="panel-section">
+          <h4>Move to</h4>
+          {targets.length
+            ? <div className="row wrap">{targets.map((t) => <button key={t.id} type="button" className="btn" onClick={() => onMove(t)}>{t.name}</button>)}</div>
+            : <p className="dim">The board has no move from {column?.name || "here"}.</p>}
+        </section>
+      )}
       {card.reviewPending ? (
         <section className="panel-section">
           <h4>Review</h4>
           <Review key={JSON.stringify([card.workId, card.revision])} src={src} board={board} card={card} toast={toast} />
         </section>
       ) : null}
-      <section className="panel-section">
-        <h4>Claim</h4>
-        <p className="dim">Claiming makes you the owner, under a lease the runtime keeps.</p>
-        <button type="button" className="btn" disabled={claiming} onClick={() => void claim()}>Claim</button>
-      </section>
+      {tracker ? null : (
+        <section className="panel-section">
+          <h4>Claim</h4>
+          <p className="dim">Claiming makes you the owner, under a lease the runtime keeps.</p>
+          <button type="button" className="btn" disabled={claiming} onClick={() => void claim()}>Claim</button>
+        </section>
+      )}
     </div>
   );
 }

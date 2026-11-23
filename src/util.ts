@@ -43,5 +43,15 @@ export function ownerOf(card: { ownerId: string | null; ownerName: string | null
   return { label: id, detail: id };
 }
 
+/**
+ * The outside tracker that places this card, named for people, or null for Scout's own work. Its
+ * tracker moves it and claims it; Scout follows, and keeps only the review. The server refuses
+ * the rest too, so this only spares people a control that would be refused.
+ */
+export function trackerOf(card: { source: { adapterId: string | null } | null }): string | null {
+  const id = card.source?.adapterId;
+  return id === "vercel-board" ? "Vercel Board" : id === "linear" ? "Linear" : null;
+}
+
 export const initials = (name: string | null | undefined) =>
   (name || "?").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
