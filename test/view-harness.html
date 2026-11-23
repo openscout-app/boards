@@ -1,0 +1,64 @@
+<!doctype html>
+<!-- A stand-in for an agent host that draws MCP Apps, for a look at the view under `npm run dev`:
+     open /test/view-harness.html?kind=work-board (or board-room). It frames the view, hands it a
+     tool result, and answers its tool calls the way Scout boards' MCP server does, through /api. -->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>View harness</title>
+  <style>
+    body { margin: 0; font: 13px system-ui; background: #ddd; }
+    .bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; }
+    iframe { display: block; width: 100%; border: 0; background: white; }
+    body.full iframe { position: fixed; inset: 0; height: 100%; }
+  </style>
+</head>
+<body>
+  <div class="bar"><span>Host thread</span><span id="mode">inline</span></div>
+  <iframe id="view" src="/view.html"></iframe>
+  <script type="module">
+    const q = new URLSearchParams(location.search);
+    const kind = q.get("kind") || "work-board";
+    const frame = document.getElementById("view");
+    const send = (m) => frame.contentWindow.postMessage({ jsonrpc: "2.0", ...m }, "*");
+    const asResult = async (res) => ({ structuredContent: { status: res.status, body: await res.json().catch(() => ({})) } });
+    async function tool(name, a) {
+      const json = (body) => ({ method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      if (name === "api_read" && a.preview) return asResult(await fetch("/api/move", json({ ...a.preview, dryRun: true })));
+      if (name === "api_read") return asResult(await fetch(a.path));
+      if (name === "api_write") return asResult(await fetch(a.path, json(a.body || {})));
+      return { isError: true, content: [{ type: "text", text: `no tool ${name}` }] };
+    }
+    window.addEventListener("message", async (e) => {
+      const m = e.data;
+      if (!m || m.jsonrpc !== "2.0") return;
+      if (m.method === "ui/initialize") {
+        send({ id: m.id, result: { hostContext: { theme: q.get("theme") || "light", displayMode: "inline" } } });
+      } else if (m.method === "ui/notifications/initialized") {
+        send({ method: "ui/notifications/tool-result", params: { structuredContent: { kind, boardsUrl: location.origin + "/" } } });
+        // ?mode=fullscreen: as if the person pressed Expand
+        if (q.get("mode") === "fullscreen") {
+          document.body.classList.add("full");
+          document.getElementById("mode").textContent = "fullscreen";
+          send({ method: "ui/notifications/host-context-changed", params: { displayMode: "fullscreen" } });
+        }
+      } else if (m.method === "ui/notifications/size-changed") {
+        if (!document.body.classList.contains("full")) frame.style.height = `${m.params.height}px`;
+      } else if (m.method === "ui/request-display-mode") {
+        const mode = m.params.mode === "fullscreen" ? "fullscreen" : "inline";
+        document.body.classList.toggle("full", mode === "fullscreen");
+        document.getElementById("mode").textContent = mode;
+        send({ id: m.id, result: { mode } });
+        send({ method: "ui/notifications/host-context-changed", params: { displayMode: mode } });
+      } else if (m.method === "ui/open-link") {
+        document.getElementById("mode").textContent = `asked to open ${m.params.url}`;
+        send({ id: m.id, result: {} });
+      } else if (m.method === "tools/call") {
+        send({ id: m.id, result: await tool(m.params.name, m.params.arguments || {}) });
+      } else if (m.id !== undefined) {
+        send({ id: m.id, result: {} });
+      }
+    });
+  </script>
+</body>
+</html>

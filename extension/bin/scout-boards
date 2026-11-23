@@ -1,0 +1,3 @@
+#!/bin/sh
+# `scout boards`: Scout boards, run from its repository on GitHub. Arguments pass through.
+exec npx -y github:openscout-app/boards "$@"

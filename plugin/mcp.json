@@ -4,7 +4,7 @@
     "scout-boards": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "github:openscout-app/boards"]
+      "args": ["-y", "github:openscout-app/boards", "mcp"]
     }
   }
 }
