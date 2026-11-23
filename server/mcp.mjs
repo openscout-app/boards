@@ -19,6 +19,7 @@ import { READS, WRITES, VERSION, route } from "./api.mjs";
 import { boardForModel, describeBoard } from "./board.mjs";
 import { describeRoom, pickRoom, roomName } from "./rooms.mjs";
 import { ensure } from "./local.mjs";
+import { moveEvent, pollMoves } from "./move-events.mjs";
 import { DIST } from "./serve.mjs";
 
 const VIEW_URI = "ui://scout-boards/work-board.html";
@@ -143,15 +144,29 @@ async function callTool(name, args = {}) {
 /** A route's answer as a tool result: the view reads `status` and `body` from it. */
 const asResult = (r) => ({ content: [{ type: "text", text: JSON.stringify(r.body) }], structuredContent: { status: r.status, body: r.body } });
 
-const out = (msg) => process.stdout.write(JSON.stringify({ jsonrpc: "2.0", ...msg }) + "\n");
+const send = (msg) => process.stdout.write(JSON.stringify({ jsonrpc: "2.0", ...msg }) + "\n");
 
 export function serveMcp() {
   const rl = readline.createInterface({ input: process.stdin });
   rl.on("line", async (line) => {
     let m;
     try { m = JSON.parse(line); } catch { return; }
-    if (m.id === undefined) return; // a notification
+    if (m?.id == null) return; // a notification
+    const version = m.params?._meta?.["io.modelcontextprotocol/protocolVersion"];
+    const modern = version === "2026-07-28";
+    const out = (msg) => {
+      if (modern && msg.result) Object.assign(msg.result, { resultType: "complete", ttlMs: 0, cacheScope: "private",
+        _meta: { ...msg.result._meta, "io.modelcontextprotocol/serverInfo": { name: "scout-boards", version: VERSION } } });
+      return send(msg);
+    };
+    if (version && !modern) return out({ id: m.id, error: { code: -32022, message: "Unsupported protocol version", data: { requested: version, supported: ["2026-07-28"] } } });
     try {
+      if (modern) {
+        if (m.method === "server/discover") return out({ id: m.id, result: { supportedVersions: [version],
+          capabilities: { tools: {}, resources: {}, extensions: { "io.modelcontextprotocol/events": {} } } } });
+        if (m.method === "events/list") return out({ id: m.id, result: { events: [moveEvent] } });
+        if (m.method === "events/poll") return out({ id: m.id, result: await pollMoves(m.params) });
+      }
       switch (m.method) {
         case "initialize":
           return out({ id: m.id, result: {
@@ -182,7 +197,7 @@ export function serveMcp() {
           return out({ id: m.id, error: { code: -32601, message: `no method ${m.method}` } });
       }
     } catch (e) {
-      out({ id: m.id, error: { code: -32603, message: String(e?.message || e) } });
+      out({ id: m.id, error: e.rpcError ?? { code: -32603, message: String(e?.message || e) } });
     }
   });
 }

@@ -55,3 +55,31 @@ test("the MCP server lists its tools and serves the view", async () => {
     assert.equal(refused.result.isError, true);
   } finally { c.close(); await fake.close(); }
 });
+
+test("an Events client resumes applied moves and reopens from the runtime ledger", async () => {
+  const fake = await fakeRuntime();
+  const c = client({ SCOUT_RUNTIME_URL: fake.url });
+  const meta = { "io.modelcontextprotocol/protocolVersion": "2026-07-28", "io.modelcontextprotocol/clientCapabilities": {} };
+  const call = async (method, params = {}) => c.call(method, { ...params, _meta: meta });
+  const poll = (cursor, extra) => call("events/poll", { name: "board.card.moved", arguments: { workId: "work-106" }, cursor, ...extra });
+  try {
+    assert.deepEqual((await call("server/discover")).result.capabilities.extensions, { "io.modelcontextprotocol/events": {} });
+    assert.deepEqual((await call("events/list")).result.events[0].delivery, ["poll"]);
+    const start = (await poll(null)).result;
+    assert.deepEqual(start.events, []);
+    const old = fake.data.moves[0];
+    fake.data.moves.push({ ...old, id: "blocked", revision: undefined, verdict: "deny" });
+    old.review = "reopened";
+    old.reviewedAt = Date.now();
+    fake.data.moves.push({ ...old, id: "new", review: "confirmed", revision: 6, createdAt: old.reviewedAt });
+    const page = (await poll(start.cursor, { maxEvents: 1 })).result;
+    assert.equal(page.hasMore, true);
+    assert.deepEqual(page.events.map(e => e.eventId), [old.id + ":reopened"]);
+    const end = (await poll(page.cursor)).result;
+    assert.deepEqual(end.events.map(e => e.eventId), ["new"]);
+    assert.equal(end.truncated, false);
+    assert.deepEqual((await poll(end.cursor)).result.events, []);
+    assert.equal((await poll("obsolete")).result.truncated, true);
+    assert.equal((await poll(null, { maxEvents: -1 })).error.code, -32602);
+  } finally { c.close(); await fake.close(); }
+});
