@@ -37,8 +37,9 @@ Then ask the agent for the work board.
 
 | Tool | Called by | Does |
 | --- | --- | --- |
-| `work_board` | The model | Shows the board, and returns its columns and cards as text |
-| `api_read` | The view | Reads the board, the move ledger, agents and the operator name, and checks a move without making it |
+| `work_board` | The model | Shows the Kanban, and returns its columns and cards as text |
+| `board_room` | The model | Shows a Vercel Board room Scout follows: its posts and its tasks, with a switcher for the other rooms |
+| `api_read` | The view | Reads the board, the move ledger, Board rooms, agents and the operator name, and checks a move without making it |
 | `api_write` | The view | Moves a card, reviews a move, or continues work. Hosts ask the person first |
 
 The view's tools accept a fixed list of Scout paths and nothing else. Every
