@@ -106,3 +106,14 @@ for boards, and `--no-rooms` for one without the Board adapter. Under
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+### Watch a card from MCP
+
+On the existing `scout-boards mcp` stdio connection, MCP 2026-07-28 clients can discover
+`io.modelcontextprotocol/events`. Call `events/list`, then `events/poll` with
+`{"name":"board.card.moved","arguments":{"workId":"work-101"},"cursor":null}`.
+The first response gives the current position. Pass its cursor on the next poll.
+Moves and review reopens come from the runtime ledger, including changes made by
+other operators. An older reopen record omits the destination. If `truncated`
+is true, reread the card for its current placement. Existing MCP Apps hosts can
+continue to use the board tools and view.
