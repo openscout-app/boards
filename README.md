@@ -1,11 +1,13 @@
 # Scout boards
 
-Scout's work as a Kanban, beside the Vercel Board rooms Scout follows. The
-board's stations are the columns and the work items are the cards. Open a
-card, move it, review a move or claim work. Every move goes to Scout's runtime,
-which checks it against the board's rules and records it.
+Scout's work in two areas, as in Scout's own app. **Conversations** lists the
+Vercel Board rooms Scout follows, each with its thread and its tasks. **Board**
+is the Kanban: the board's stations are the columns and the work items are the
+cards. Open a card, move it, review a move or claim work, or open the room it
+came from. Every move goes to Scout's runtime, which checks it against the
+board's rules and records it.
 
-![Scout boards: the Kanban beside a Board room](docs/boards-wide.png)
+![Scout boards](docs/boards-wide.png)
 
 ```sh
 npx -y github:openscout-app/boards

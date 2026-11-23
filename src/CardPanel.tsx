@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { Board, Card, Column, MoveDecision, MoveRecord, MoveResponse, Verdict } from "./types";
 import type { Source } from "./source";
 import { targetsOf } from "./board";
-import { ago, label, when } from "./util";
+import { ago, label, ownerOf, when } from "./util";
 import { Arrow, External } from "./icons";
 
 const VERDICT: Record<Verdict, string> = {
@@ -100,7 +100,7 @@ export function CardPanel({ src, board, card, onMove, toast }: {
         <Fact k="State">{label(card.state)}</Fact>
         <Fact k="Acceptance">{label(card.acceptanceState)}</Fact>
         <Fact k="Priority">{label(card.priority)}</Fact>
-        <Fact k="Owner">{card.ownerName || card.ownerId}</Fact>
+        <Fact k="Owner">{ownerOf(card)?.label}</Fact>
         <Fact k="Next move">{card.nextMoveOwnerName || card.nextMoveOwnerId}</Fact>
         <Fact k="Part of">{card.parentTitle || card.parentId}</Fact>
         <Fact k="Run">{run ? `${[run.harness, label(run.state)].filter(Boolean).join(" · ")}${run.startedAt ? `, started ${ago(run.startedAt)} ago` : ""}` : null}</Fact>

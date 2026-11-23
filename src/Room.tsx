@@ -56,6 +56,47 @@ function Switcher({ rooms, current, onPick }: { rooms: RoomRef[]; current: RoomR
   );
 }
 
+/** Where a room comes from, named for people: the adapter, and the board on it. */
+export const sourceName = (adapterId: string | null | undefined) =>
+  adapterId === "vercel-board" ? "Vercel Board" : adapterId === "slack" ? "Slack" : adapterId === "scout" ? "Scout" : label(adapterId || "") || "Other";
+
+/**
+ * Every room Scout follows, grouped by where it comes from (Vercel Board, and later Slack or Scout's
+ * own chats), then by the board it sits on. The open room is marked by its background.
+ */
+export function RoomList({ rooms, current, onPick }: { rooms: RoomRef[]; current: string; onPick: (id: string) => void }) {
+  const groups = useMemo(() => {
+    const m = new Map<string, { source: string; board: string | null; rooms: RoomRef[] }>();
+    for (const r of rooms) {
+      const key = `${r.adapterId}\u0000${r.board || ""}`;
+      const g = m.get(key) || { source: sourceName(r.adapterId), board: r.board, rooms: [] };
+      g.rooms.push(r);
+      m.set(key, g);
+    }
+    return [...m.values()];
+  }, [rooms]);
+  return (
+    <nav className="room-list" aria-label="Rooms">
+      {groups.map((g) => (
+        <section key={`${g.source}:${g.board}`} className="room-group" aria-label={g.board ? `${g.source}, ${g.board}` : g.source}>
+          <div className="room-group-head">
+            <span>{g.source}</span>
+            {g.board ? <span className="faint ell">{g.board}</span> : null}
+          </div>
+          {g.rooms.map((r) => (
+            <button key={r.conversationId} type="button" className="room-row" aria-current={r.conversationId === current ? "page" : undefined}
+              onClick={() => onPick(r.conversationId)}>
+              <span className="ell">{r.channel}</span>
+              <span className="sp" />
+              {r.lastAt ? <span className="faint" title={when(r.lastAt)}>{ago(r.lastAt)}</span> : null}
+            </button>
+          ))}
+        </section>
+      ))}
+    </nav>
+  );
+}
+
 function WhoName({ who }: { who: Who | null }) {
   if (!who) return <span className="who-name dim">Someone</span>;
   return <span className={`who-name k-${who.kind}`} title={who.detail}>{who.label}{who.harness ? <span className="faint"> · {who.harness}</span> : null}</span>;
@@ -133,8 +174,10 @@ function RunBlock({ run }: { run: Run }) {
   );
 }
 
-export function Room({ state, read, roomId, onPickRoom, actions }: {
+export function Room({ state, read, roomId, onPickRoom, actions, switcher = true }: {
   state: State; read: Read<RoomData> | null; roomId: string; onPickRoom: (id: string) => void; actions?: React.ReactNode;
+  /** The room's own menu of rooms; off when a room list sits beside it. */
+  switcher?: boolean;
 }) {
   const rooms = state.rooms?.list || [];
   const current = rooms.find((r) => r.conversationId === roomId) || null;
@@ -143,7 +186,8 @@ export function Room({ state, read, roomId, onPickRoom, actions }: {
   });
   const feed = useRef<HTMLDivElement>(null);
   const data = read?.ok && read.key === roomId ? read.data : null;
-  const tab = (current && picked[current.conversationId]) || data?.view || "conversation";
+  // a room opens on its conversation; Tasks is one click away, and the choice is kept per room
+  const tab = (current && picked[current.conversationId]) || "conversation";
   const pick = (v: "conversation" | "tasks") => {
     if (!current) return;
     const next = { ...picked, [current.conversationId]: v };
@@ -179,7 +223,7 @@ export function Room({ state, read, roomId, onPickRoom, actions }: {
   return (
     <div className="room">
       <div className="band">
-        <Switcher rooms={rooms} current={current} onPick={onPickRoom} />
+        {switcher ? <Switcher rooms={rooms} current={current} onPick={onPickRoom} /> : <span className="band-title ell">{current.channel}</span>}
         <span className="sp" />
         <div className="tabs" role="tablist" aria-label={`Views of ${current.channel}`}>
           <button type="button" role="tab" aria-selected={tab === "conversation"} onClick={() => pick("conversation")}><Thread />Conversation</button>

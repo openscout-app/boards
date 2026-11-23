@@ -26,5 +26,22 @@ export function label(s: string | null | undefined): string {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
+/**
+ * Who owns a card, named for people. The runtime gives a name when it knows the actor; a card that
+ * came in from a Vercel Board can carry the Board's own principal, which is an ID, not a name.
+ */
+export function ownerOf(card: { ownerId: string | null; ownerName: string | null }): { label: string; detail: string } | null {
+  const id = card.ownerId || "";
+  const BOARD = /^vercel:(user|team):/;
+  const raw = card.ownerName || "";
+  // a Vercel principal, in either field, is an ID: name it for what it is
+  if (BOARD.test(raw) || BOARD.test(id)) return { label: "Board user", detail: raw || id };
+  const name = raw && raw !== id ? raw : null;
+  if (name) return { label: name, detail: id || name };
+  if (!id) return null;
+  if (id === "operator") return { label: "You", detail: id };
+  return { label: id, detail: id };
+}
+
 export const initials = (name: string | null | undefined) =>
   (name || "?").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";

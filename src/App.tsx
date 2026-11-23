@@ -1,11 +1,12 @@
-// Scout boards: the Kanban on the left, the Board room on the right, one seam between them. A
-// narrow window shows one pane at a time, with a switch. When the runtime isn't there, or is too
-// old, or follows no board, the page says so and gives the one command that fixes it.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+// Scout boards, in two areas like Scout's own app: Conversations (the rooms Scout follows, each with
+// its thread and its tasks) and Board (the Kanban of Scout's work). A card that came from a room
+// opens that room. When the runtime isn't there, or is too old, or follows no board, the page says
+// so and gives the one command that fixes it.
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { Source } from "./source";
 import { useLive } from "./source";
 import { Kanban } from "./Kanban";
-import { Room } from "./Room";
+import { Room, RoomList } from "./Room";
 import { Notice } from "./Notice";
 import { Kanban as KanbanGlyph, ScoutMark, Thread } from "./icons";
 import { prefs } from "./util";
@@ -14,6 +15,7 @@ import type { RoomRef } from "./types";
 export const SETUP = "npx github:openscout-app/boards setup";
 
 type Pane = "kanban" | "room";
+export type Area = "conversations" | "board";
 type Toast = { id: number; text: string; tone: "ok" | "warn" };
 
 function useNarrow(px: number) {
@@ -30,35 +32,12 @@ function useNarrow(px: number) {
 
 const newest = (rooms: RoomRef[]) => [...rooms].sort((a, b) => (b.lastAt ?? 0) - (a.lastAt ?? 0))[0];
 
-/** The left pane's share of the width, kept in this browser, dragged on the seam. */
-function useSplit() {
-  const [share, setShare] = useState(() => {
-    const v = Number(prefs.get("split"));
-    return v >= 0.25 && v <= 0.8 ? v : 0.62;
-  });
-  const box = useRef<HTMLDivElement>(null);
-  const drag = (e: React.PointerEvent) => {
-    const el = box.current;
-    if (!el) return;
-    e.preventDefault();
-    const rect = el.getBoundingClientRect();
-    const seam = e.currentTarget as HTMLElement;
-    seam.setPointerCapture(e.pointerId);
-    let last = share;
-    const move = (ev: PointerEvent) => { last = Math.min(0.8, Math.max(0.25, (ev.clientX - rect.left) / rect.width)); setShare(last); };
-    const up = () => { seam.removeEventListener("pointermove", move); seam.removeEventListener("pointerup", up); prefs.set("split", String(last)); };
-    seam.addEventListener("pointermove", move);
-    seam.addEventListener("pointerup", up);
-  };
-  const key = (e: React.KeyboardEvent) => {
-    const step = e.key === "ArrowLeft" ? -0.02 : e.key === "ArrowRight" ? 0.02 : 0;
-    if (!step) return;
-    e.preventDefault();
-    const v = Math.min(0.8, Math.max(0.25, share + step));
-    setShare(v);
-    prefs.set("split", String(v));
-  };
-  return { share, box, drag, key };
+/** The address says first; a room asked for opens Conversations; else this browser's last choice. */
+function initialArea(roomAsked: boolean): Area {
+  const asked = new URL(window.location.href).searchParams.get("area");
+  if (asked === "conversations" || asked === "board") return asked;
+  if (roomAsked) return "conversations";
+  return prefs.get("area") === "conversations" ? "conversations" : "board";
 }
 
 export function App({ src, initialBoard = "", initialRoom = "", only, actions, embedded }: {
@@ -71,10 +50,9 @@ export function App({ src, initialBoard = "", initialRoom = "", only, actions, e
 }) {
   const [boardId, setBoardId] = useState(initialBoard);
   const [roomWant, setRoomWant] = useState(initialRoom || (embedded ? "" : prefs.get("room") || ""));
-  const [pane, setPane] = useState<Pane>(only || (prefs.get("pane") as Pane) || "kanban");
+  const [area, setArea] = useState<Area>(() => (only ? (only === "room" ? "conversations" : "board") : embedded ? (initialRoom ? "conversations" : "board") : initialArea(Boolean(initialRoom))));
   const [toasts, setToasts] = useState<Toast[]>([]);
   const narrow = useNarrow(860);
-  const split = useSplit();
 
   // the room shown: the one asked for while the runtime lists it, else the newest
   const live0 = useLive(src, boardId, roomWant);
@@ -97,13 +75,16 @@ export function App({ src, initialBoard = "", initialRoom = "", only, actions, e
   useEffect(() => {
     if (embedded) return;
     const u = new URL(window.location.href);
+    u.searchParams.set("area", area);
     if (boardId) u.searchParams.set("board", boardId); else u.searchParams.delete("board");
     if (roomId) u.searchParams.set("room", roomId); else u.searchParams.delete("room");
     window.history.replaceState(null, "", u);
     if (roomId) prefs.set("room", roomId);
-  }, [boardId, roomId, embedded]);
+  }, [area, boardId, roomId, embedded]);
 
-  const pickPane = (p: Pane) => { setPane(p); prefs.set("pane", p); };
+  const pickArea = (a: Area) => { setArea(a); if (!embedded) prefs.set("area", a); };
+  // a card that came from a room opens it, in the Conversations area
+  const openRoom = (conversationId: string) => { setRoomWant(conversationId); pickArea("conversations"); };
 
   let body: ReactNode;
   if (unreachable && !state) {
@@ -118,31 +99,33 @@ export function App({ src, initialBoard = "", initialRoom = "", only, actions, e
         <p className="dim">The page picks the runtime up by itself once it answers.</p>
       </Notice>
     );
-  } else {
-    const kanban = <Kanban src={src} state={state} read={board} boardId={boardId} onPickBoard={setBoardId} toast={toast} compact={Boolean(only)} />;
-    const roomPane = <Room state={state} read={room} roomId={roomId} onPickRoom={setRoomWant} />;
-    if (only) body = <div className="pane solo">{only === "kanban" ? kanban : roomPane}</div>;
-    else if (narrow) body = <div className="pane solo">{pane === "kanban" ? kanban : roomPane}</div>;
-    else body = (
-      <div className="split" ref={split.box} style={{ gridTemplateColumns: `${split.share}fr 1px ${1 - split.share}fr` }}>
-        <div className="pane">{kanban}</div>
-        <div className="seam" role="separator" aria-orientation="vertical" aria-label="Resize the panes" tabIndex={0}
-          aria-valuenow={Math.round(split.share * 100)} aria-valuemin={25} aria-valuemax={80}
-          onPointerDown={split.drag} onKeyDown={split.key} />
-        <div className="pane">{roomPane}</div>
+  } else if (area === "board") {
+    body = (
+      <div className="pane solo">
+        <Kanban src={src} state={state} read={board} boardId={boardId} onPickBoard={setBoardId} toast={toast} compact={Boolean(only)}
+          rooms={rooms} onOpenRoom={only ? undefined : openRoom} />
       </div>
     );
+  } else {
+    // the room list beside the room on a wide page; on a narrow one, or in a thread, the room's own switcher
+    const listed = !only && !narrow && rooms.length > 0;
+    const roomPane = <Room state={state} read={room} roomId={roomId} onPickRoom={setRoomWant} switcher={!listed} />;
+    body = listed ? (
+      <div className="convs">
+        <RoomList rooms={rooms} current={roomId} onPick={setRoomWant} />
+        <div className="pane">{roomPane}</div>
+      </div>
+    ) : <div className="pane solo">{roomPane}</div>;
   }
 
-  const showSwitch = !only && narrow && state?.runtime.up;
   return (
     <div className={`app${embedded ? " embedded" : ""}`}>
       <header className="top">
         <span className="brand"><ScoutMark /><span>Scout boards</span></span>
-        {showSwitch ? (
-          <div className="tabs" role="tablist" aria-label="Pane">
-            <button type="button" role="tab" aria-selected={pane === "kanban"} onClick={() => pickPane("kanban")}><KanbanGlyph />Kanban</button>
-            <button type="button" role="tab" aria-selected={pane === "room"} onClick={() => pickPane("room")}><Thread />Board room</button>
+        {!only && state?.runtime.up ? (
+          <div className="tabs areas" role="tablist" aria-label="Area">
+            <button type="button" role="tab" aria-selected={area === "conversations"} onClick={() => pickArea("conversations")}><Thread />Conversations</button>
+            <button type="button" role="tab" aria-selected={area === "board"} onClick={() => pickArea("board")}><KanbanGlyph />Board</button>
           </div>
         ) : null}
         <span className="sp" />

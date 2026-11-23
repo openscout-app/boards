@@ -2,21 +2,24 @@
 // detail panel; it moves from its menu or by dragging it to a column, and every move is shown as
 // the runtime decides it (a dry run) before it is made.
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
-import type { Board, Card, Column, Read, State } from "./types";
+import type { Board, Card, Column, Read, RoomRef, State } from "./types";
 import type { Source } from "./source";
-import { ago, initials, label } from "./util";
-import { More, Close } from "./icons";
+import { ago, initials, label, ownerOf } from "./util";
+import { More, Close, Thread } from "./icons";
 import { CardPanel, MoveDialog } from "./CardPanel";
 import { Notice } from "./Notice";
 import { targetsOf } from "./board";
 
 const RUN_STATES = new Set(["running", "working", "active", "queued", "waking", "starting"]);
 
-function CardView({ card, selected, onOpen, onMenu, menuOpen, draggable }: {
+function CardView({ card, selected, onOpen, onMenu, menuOpen, draggable, room, onOpenRoom }: {
   card: Card; selected: boolean; onOpen: () => void; onMenu: () => void; menuOpen: boolean; draggable: boolean;
+  /** The room this card came from, when Scout follows it. */
+  room?: RoomRef | null; onOpenRoom?: (conversationId: string) => void;
 }) {
   const at = card.lastMeaningfulAt ?? card.updatedAt ?? card.createdAt;
   const run = card.activeFlight;
+  const owner = ownerOf(card);
   return (
     <div
       className={`card${selected ? " selected" : ""}`}
@@ -24,21 +27,27 @@ function CardView({ card, selected, onOpen, onMenu, menuOpen, draggable }: {
       draggable={draggable}
       onDragStart={(e) => { e.dataTransfer.setData("text/x-scout-work", card.workId); e.dataTransfer.effectAllowed = "move"; }}
       onClick={onOpen}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      // keys on the card itself; a button inside it (the room link, the move menu) handles its own
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(); } }}
     >
       <div className="card-title">{card.title}</div>
       <div className="card-meta">
-        {card.ownerName || card.ownerId
-          ? <span className="who" title={card.ownerId || undefined}><span className="coin">{initials(card.ownerName || card.ownerId)}</span><span className="ell">{card.ownerName || card.ownerId}</span></span>
+        {owner
+          ? <span className="who" title={owner.detail}><span className="coin">{initials(owner.label)}</span><span className="ell">{owner.label}</span></span>
           : <span className="who none">No owner</span>}
         {at ? <span className="age" title={new Date(at).toLocaleString()}>{ago(at)}</span> : null}
-        <span className="sp" />
-        {card.state && card.state !== "open" ? <span className="chip">{label(card.state)}</span> : null}
       </div>
-      {card.reviewPending || card.source?.adapterId ? (
+      {(card.state && card.state !== "open") || card.reviewPending || card.source?.adapterId || room ? (
         <div className="card-tags">
+          {card.state && card.state !== "open" ? <span className="chip">{label(card.state)}</span> : null}
           {card.reviewPending ? <span className="chip amber">Review pending</span> : null}
-          {card.source?.adapterId ? <span className="chip line" title={card.source.url || undefined}>{card.source.adapterId}</span> : null}
+          {room && onOpenRoom ? (
+            <button type="button" className="chip line room-link" title={`Open ${room.channel} in Conversations`}
+              onClick={(e) => { e.stopPropagation(); onOpenRoom(room.conversationId); }}>
+              <Thread /><span className="ell">{room.channel}</span>
+            </button>
+          ) : room ? <span className="chip line"><Thread /><span className="ell">{room.channel}</span></span> : null}
+          {card.source?.adapterId && !room ? <span className="chip line" title={card.source.url || undefined}>{card.source.adapterId}</span> : null}
         </div>
       ) : null}
       {run ? (
@@ -81,10 +90,13 @@ function MoveMenu({ targets, onPick, onClose }: { targets: Column[]; onPick: (c:
   );
 }
 
-export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact }: {
+export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact, rooms = [], onOpenRoom }: {
   src: Source; state: State; read: Read<Board> | null; boardId: string; onPickBoard: (id: string) => void;
   toast: (text: string, tone?: "ok" | "warn") => void; compact?: boolean;
+  /** The rooms Scout follows; a card whose conversation is one of them links to it. */
+  rooms?: RoomRef[]; onOpenRoom?: (conversationId: string) => void;
 }) {
+  const roomOf = useMemo(() => new Map(rooms.map((r) => [r.conversationId, r])), [rooms]);
   const [selected, setSelected] = useState<string | null>(null);
   const [menu, setMenu] = useState<string | null>(null);
   const [moving, setMoving] = useState<{ card: Card; to: Column } | null>(null);
@@ -166,6 +178,7 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact 
                   {cards.map((c) => (
                     <div key={c.workId} className="card-slot">
                       <CardView card={c} selected={c.workId === selected} draggable={!compact}
+                        room={roomOf.get(c.roomId || c.conversationId || "") || null} onOpenRoom={onOpenRoom}
                         onOpen={() => setSelected(c.workId === selected ? null : c.workId)}
                         menuOpen={menu === c.workId} onMenu={() => setMenu(menu === c.workId ? null : c.workId)} />
                       {menu === c.workId ? <MoveMenu targets={targetsOf(board, c)} onClose={() => setMenu(null)} onPick={(to) => { setMenu(null); setMoving({ card: c, to }); }} /> : null}
