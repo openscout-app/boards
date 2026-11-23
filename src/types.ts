@@ -23,6 +23,8 @@ export type Card = {
   createdAt: number | null; updatedAt: number | null; lastMeaningfulAt: number | null; lastMeaningfulSummary: string | null;
   source: { adapterId: string | null; instanceId: string | null; workItemId: string | null; url: string | null } | null;
   activeFlight: { id: string; state: string | null; harness: string | null; sessionId: string | null; startedAt: number | null } | null;
+  /** The room this card came from, when Scout follows it (the server finds it); null otherwise. */
+  roomId?: string | null;
 };
 export type Board = {
   boards: BoardRef[];

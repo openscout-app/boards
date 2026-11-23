@@ -46,7 +46,9 @@ export async function readBoard(want) {
   const chosen = pickBoard(boards, want);
   if (!chosen) return { boards, board: null, columns: [], transitions: [], cards: [] };
   try {
-    return { boards, ...shapeBoard(await rt(`/v1/boards/${encodeURIComponent(chosen.id)}?limit=${BOARD_LIMIT}`)) };
+    const board = { boards, ...shapeBoard(await rt(`/v1/boards/${encodeURIComponent(chosen.id)}?limit=${BOARD_LIMIT}`)) };
+    await attachRooms(board.cards).catch(() => {});
+    return board;
   } catch (e) {
     if (e instanceof RuntimeError && e.status === 404) throw new Refused(404, "no_such_board", `The runtime has no board ${chosen.id}.`);
     throw e;
@@ -58,6 +60,53 @@ async function connections() {
   try { return (await rt("/v1/integrations/vercel-board/status"))?.connections || []; } catch (e) {
     if (e instanceof RuntimeError && (e.status === 404 || e.code === "vercel_board_unavailable")) return null;
     throw e;
+  }
+}
+
+// ---- the room a card came from
+
+/**
+ * A card's room, as `roomId` (the room's conversation), or null. A card that a Scout conversation
+ * started carries that conversation; a card the Vercel Board adapter brought in carries only the
+ * Board task, so its channel comes from the task's hand-offs on the runtime. A task never changes
+ * channel, so the answer is kept; a miss is asked again after a minute.
+ */
+const roomCache = new Map();
+const MISS_MS = 60e3;
+
+/** The Board connection a card's source names: the runtime's connection id is `vercel-` + the source's instance. */
+const connectionFor = (list, instanceId) => list.find((c) => c.id === `vercel-${instanceId}` || c.id === instanceId) || null;
+
+async function boardTaskRoom(list, rooms, source) {
+  const key = `${source.instanceId}\u0000${source.workItemId}`;
+  const hit = roomCache.get(key);
+  if (hit && (hit.roomId || Date.now() - hit.at < MISS_MS)) return hit.roomId;
+  let roomId = null;
+  const conn = connectionFor(list, source.instanceId);
+  if (conn) {
+    const q = new URLSearchParams({ connection: conn.id, task: source.workItemId, limit: "1" });
+    const first = (await rt(`/v1/integrations/vercel-board/handoffs?${q}`).catch(() => null))?.handoffs?.[0];
+    const room = first?.channel ? rooms.find((r) => r.connectionId === conn.id && r.channel === first.channel) : null;
+    roomId = room?.conversationId || null;
+  }
+  roomCache.set(key, { roomId, at: Date.now() });
+  return roomId;
+}
+
+export async function attachRooms(cards) {
+  for (const c of cards) c.roomId = null;
+  const list = await connections();
+  if (!list?.length) return;
+  const rooms = roomsFrom(list);
+  const roomIds = new Set(rooms.map((r) => r.conversationId));
+  const ask = [];
+  for (const c of cards) {
+    if (c.conversationId && roomIds.has(c.conversationId)) c.roomId = c.conversationId;
+    else if (c.source?.adapterId === "vercel-board" && c.source.instanceId && c.source.workItemId) ask.push(c);
+  }
+  // a few at a time, so a first read of a long board doesn't flood the runtime
+  for (let i = 0; i < ask.length; i += 6) {
+    await Promise.all(ask.slice(i, i + 6).map(async (c) => { c.roomId = await boardTaskRoom(list, rooms, c.source); }));
   }
 }
 

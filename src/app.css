@@ -42,12 +42,21 @@ p { margin: 0; }
 .status.up .dot { background: var(--green); }
 .main { min-height: 0; min-width: 0; position: relative; }
 
-.split { height: 100%; display: grid; min-width: 0; }
 .pane { min-width: 0; min-height: 0; height: 100%; overflow: hidden; display: flex; flex-direction: column; }
 .pane > * { flex: 1; min-height: 0; }
-.seam { background: var(--line-strong); position: relative; cursor: col-resize; touch-action: none; }
-.seam::after { content: ""; position: absolute; inset: 0 -4px; }
-.seam:hover, .seam:focus-visible { background: var(--accent-line); box-shadow: none; }
+
+/* Conversations: the rooms Scout follows, beside the open room, one 1px seam between them */
+.convs { height: 100%; display: grid; grid-template-columns: 232px minmax(0, 1fr); min-width: 0; }
+.room-list { min-height: 0; overflow-y: auto; border-right: 1px solid var(--line-strong); padding: var(--space-sm) var(--space-xs); display: grid; align-content: start; gap: var(--space-md); }
+.room-group { display: grid; gap: 1px; }
+.room-group-head { display: flex; align-items: baseline; gap: var(--space-xs); min-width: 0; padding: 0 var(--space-sm) var(--space-2xs); font-size: var(--text-sm); color: var(--dim); }
+.room-row {
+  display: flex; align-items: center; gap: var(--space-sm); min-width: 0; height: 28px; padding: 0 var(--space-sm);
+  background: transparent; border: 0; border-radius: var(--radius-sm); font-size: var(--text-md); color: var(--ink); text-align: left; cursor: pointer;
+}
+.room-row:hover { background: var(--hover); }
+.room-row[aria-current="page"] { background: var(--surface); box-shadow: 0 0 0 1px var(--line-strong); }
+.room-row .faint { font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
 
 /* a pane's head: one band, 32px */
 .band {
@@ -105,6 +114,10 @@ p { margin: 0; }
   font-size: var(--text-xs); color: var(--dim); background: var(--hover); white-space: nowrap;
 }
 .chip.amber { color: var(--amber); background: var(--amber-soft); }
+.chip svg { width: 12px; height: 12px; flex: none; }
+.chip.room-link, .chip.line:has(svg) { gap: 4px; max-width: 100%; font-family: inherit; font-size: var(--text-xs); }
+button.chip.room-link { border: 0; cursor: pointer; color: var(--dim); }
+button.chip.room-link:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-edge); }
 .chip.line { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); font-family: var(--font-mono); font-size: var(--text-2xs); }
 .chip.s-running, .chip.s-ready { color: var(--accent); background: var(--accent-soft); }
 .chip.s-waiting, .chip.s-blocked { color: var(--amber); background: var(--amber-soft); }
@@ -141,7 +154,7 @@ p { margin: 0; }
 .kanban-body { flex: 1; min-height: 0; display: flex; position: relative; }
 .columns { flex: 1; min-width: 0; display: flex; overflow-x: auto; overflow-y: hidden; }
 .column {
-  flex: 1 0 236px; max-width: 340px; min-height: 0; display: flex; flex-direction: column;
+  flex: 1 1 200px; min-width: 176px; max-width: 340px; min-height: 0; display: flex; flex-direction: column;
   border-right: 1px solid var(--line);
 }
 .column.over { background: var(--accent-soft); }
