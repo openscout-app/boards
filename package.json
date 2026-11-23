@@ -1,20 +1,51 @@
 {
-  "name": "scout-boards",
-  "version": "0.1.0",
-  "description": "Scout's work board inside an agent's thread, as an MCP App.",
+  "name": "@openscout/boards",
+  "version": "0.2.0",
+  "description": "Scout's work as a Kanban, beside the Vercel Board rooms Scout follows. Runs on Scout's runtime.",
+  "license": "Apache-2.0",
+  "homepage": "https://openscout.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openscout-app/boards.git"
+  },
+  "bugs": "https://github.com/openscout-app/boards/issues",
   "type": "module",
   "bin": {
-    "scout-boards": "server.mjs"
+    "scout-boards": "bin/boards.mjs"
   },
   "files": [
-    "server.mjs",
-    "view/",
-    "plugin/"
+    "bin",
+    "server/*.mjs",
+    "!server/*.test.mjs",
+    "dist",
+    "plugin",
+    "extension",
+    "README.md"
   ],
   "engines": {
     "node": ">=20"
   },
-  "homepage": "https://openscout.app",
-  "repository": "github:openscout-app/boards",
-  "license": "UNLICENSED"
+  "os": [
+    "darwin"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && vite build --mode view",
+    "start": "node bin/boards.mjs",
+    "test": "node --test server/*.test.mjs",
+    "prepare": "vite build && vite build --mode view"
+  },
+  "dependencies": {
+    "@openscout/scout": "^0.5.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "4.7.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.9.3",
+    "vite": "6.4.6"
+  }
 }

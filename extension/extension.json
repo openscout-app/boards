@@ -1,0 +1,8 @@
+{
+  "api": 1,
+  "version": "0.2.0",
+  "summary": "Scout's work as a Kanban, beside the Vercel Board rooms Scout follows",
+  "command": "bin/scout-boards",
+  "docs": "README.md",
+  "completion": ["setup", "mcp", "--port", "--no-open", "--print", "--no-scout", "--help"]
+}

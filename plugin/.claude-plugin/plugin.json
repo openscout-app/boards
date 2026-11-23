@@ -1,7 +1,7 @@
 {
   "name": "scout-boards",
-  "version": "0.1.0",
-  "description": "Scout's work board in the thread: the lifecycle's stations as columns and the work items as cards. Move cards, review moves and continue work without leaving the agent.",
+  "version": "0.2.0",
+  "description": "Scout's Kanban and the Vercel Board rooms it follows, in the thread. Open a card, move it, review a move or claim work, with a link to the full page.",
   "author": {
     "name": "OpenScout",
     "url": "https://openscout.app"
