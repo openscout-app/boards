@@ -886,16 +886,20 @@ function describeRoom(name, room, others) {
   return lines.join(`
 `);
 }
-var BOARD_NOTE = "The person sees this board in the thread. Don't list its columns or cards back; answer what they asked in a sentence or two.";
-var ROOM_NOTE = "The person sees this room in the thread, with a switcher for the other rooms. Don't list its posts or the rooms back; answer what they asked in a sentence or two.";
+var boardsPage = (room) => `${webUrl()}/embed/work-board${room ? `?room=${encodeURIComponent(room)}` : ""}`;
+var besideLine = (url) => `End the reply with this link on its own line, so they can keep the Kanban and the Board room open beside the thread: ${url}`;
+var boardNote = (url) => `The person sees this board in the thread. Don't list its columns or cards back; answer what they asked in a sentence or two. ${besideLine(url)}`;
+var roomNote = (url) => `The person sees this room in the thread, with a switcher for the other rooms. Don't list its posts or the rooms back; answer what they asked in a sentence or two. ${besideLine(url)}`;
 async function callTool(name, args = {}) {
   if (name === "work_board") {
     const board = boardForModel(await web("GET", "/api/work/board"));
+    const boardsUrl = boardsPage();
+    const note = boardNote(boardsUrl);
     return {
       content: [{ type: "text", text: `${describeBoard(board)}
 
-${BOARD_NOTE}` }],
-      structuredContent: { kind: "work-board", webUrl: webUrl(), note: BOARD_NOTE, board }
+${note}` }],
+      structuredContent: { kind: "work-board", webUrl: webUrl(), boardsUrl, note, board }
     };
   }
   if (name === "board_room") {
@@ -908,11 +912,13 @@ ${BOARD_NOTE}` }],
     const room = roomForModel(chosen.data);
     const rooms = reads.map((r) => ({ conversationId: r.ref.conversationId, channel: r.ref.channel, board: r.ref.board?.name ?? null, posts: r.data?.messages.length ?? 0, lastAt: r.lastAt || null }));
     const others = reads.filter((r) => r !== chosen).map((r) => roomName(r.ref));
+    const boardsUrl = boardsPage(chosen.ref.conversationId);
+    const note = roomNote(boardsUrl);
     return {
       content: [{ type: "text", text: `${describeRoom(roomName(chosen.ref), room, others)}
 
-${ROOM_NOTE}` }],
-      structuredContent: { kind: "board-room", webUrl: webUrl(), note: ROOM_NOTE, conversationId: chosen.ref.conversationId, rooms, room }
+${note}` }],
+      structuredContent: { kind: "board-room", webUrl: webUrl(), boardsUrl, note, conversationId: chosen.ref.conversationId, rooms, room }
     };
   }
   if (name === "api_read") {
