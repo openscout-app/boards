@@ -36,7 +36,7 @@ function poller(src: Pick<Source, "get">, keys: { board: string; room: string },
           if (s.body.rooms?.supported && keys.room) reads.push(src.get<Room>(`/api/room?conversationId=${encodeURIComponent(keys.room)}`).then((a) => { if (!stop) on("room", asRead(keys.room, a)); }));
           await Promise.all(reads);
         }
-      } catch {}
+      } catch { if (!stop) on("unreachable", null); }
     }
     if (!stop) timer = window.setTimeout(tick, every);
   };
@@ -71,11 +71,19 @@ export const httpSource: Source = {
 
 /** The view's source: each call is a tool call through the host. */
 export const mcpSource: Source = {
-  async get(path) { return unwrap(await callTool("api_read", { path })); },
-  async post(path, body) { return unwrap(await callTool("api_write", { method: "POST", path, body })); },
-  async preview(body) { return unwrap(await callTool("api_read", { path: "/api/move", preview: body })); },
+  get: (path) => toolAnswer("api_read", { path }),
+  post: (path, body) => toolAnswer("api_write", { method: "POST", path, body }),
+  preview: (body) => toolAnswer("api_read", { path: "/api/move", preview: body }),
   watch(keys, on) { return poller(mcpSource, keys, on, 8e3); },
 };
+async function toolAnswer<T>(name: string, args: Record<string, unknown>): Promise<Answer<T>> {
+  try {
+    return unwrap(await callTool(name, args));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The host refused the request.";
+    return { status: 0, body: { error: "host_request_failed", message } as Answer<T>["body"] };
+  }
+}
 function unwrap<T>(r: { structuredContent?: Record<string, unknown>; isError?: boolean; content?: Array<{ text?: string }> }): Answer<T> {
   const s = r.structuredContent as { status?: number; body?: T } | undefined;
   if (s && typeof s.status === "number") return { status: s.status, body: (s.body ?? {}) as Answer<T>["body"] };

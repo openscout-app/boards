@@ -168,7 +168,18 @@ export function fakeRuntime({ port = 0, boards = true, rooms = true, now } = {})
       c.column = body.to; c.next = nextFrom(body.to); c.state = toState; c.reviewPending = body.to === "review"; c.revision += 1; c.updatedAt = Date.now();
       return send(res, 200, { decision, applied: true, move: { id: `move-${calls.length}` } });
     }
-    if (p === "/v1/work/review" && req.method === "POST") return send(res, 200, { status: "reviewed", verdict: body.verdict });
+    if (p === "/v1/work/review" && req.method === "POST") {
+      const move = data.moves.find((m) => m.itemId === body.workId && m.id === body.moveId);
+      const card = data.board.cards.find((c) => c.workId === body.workId);
+      if (!move || !card) return send(res, 404, { message: "No such move." });
+      if (!["pending", "consulted"].includes(move.review)) return send(res, 409, { message: "This move was already reviewed." });
+      const status = move.revision === body.revision && card.revision === body.revision ?
+        { confirm: "confirmed", reopen: "reopened", consult: "consulted" }[body.verdict] : "stale";
+      move.review = status;
+      if (status === "confirmed" || status === "reopened") card.reviewPending = false;
+      if (status === "reopened") { card.column = move.from; card.revision++; }
+      return send(res, 200, { status, move });
+    }
     if (p === "/v1/work/claim" && req.method === "POST") return send(res, 200, { ownerId: body.actorId, leaseGeneration: 1 });
     send(res, 404, { error: "not_found" });
   });

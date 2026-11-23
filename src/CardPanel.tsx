@@ -23,24 +23,45 @@ function Review({ src, board, card, toast }: { src: Source; board: Board; card: 
   const [move, setMove] = useState<MoveRecord | null | undefined>(undefined);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState("");
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let live = true;
     void src.get<{ moves: MoveRecord[] }>(`/api/moves?workId=${encodeURIComponent(card.workId)}`).then((a) => {
       if (!live) return;
-      const pending = (a.body.moves || []).filter((m) => m.review === "pending").sort((x, y) => (y.createdAt ?? 0) - (x.createdAt ?? 0));
+      if (a.status !== 200) { setProblem(a.body.message || "The runtime couldn't read the moves."); return; }
+      const pending = (a.body.moves || []).filter((m) => m.itemId === card.workId && m.revision === card.revision && (m.review === "pending" || m.review === "consulted")).sort((x, y) => (y.createdAt ?? 0) - (x.createdAt ?? 0));
       setMove(pending[0] || null);
     });
     return () => { live = false; };
-  }, [src, card.workId, card.revision]);
+  }, [src, card.workId, card.revision, attempt]);
   const name = (id: string) => board.columns.find((c) => c.id === id)?.name || id;
+  if (problem) return <p role="alert">{problem} <button type="button" className="btn" onClick={() => { setProblem(""); setAttempt(attempt + 1); }}>Retry</button></p>;
   if (move === undefined) return <p className="dim">Reading the move to review.</p>;
   if (!move) return <p className="dim">The runtime lists no move waiting for review.</p>;
   const send = async (verdict: "confirm" | "reopen" | "consult") => {
     setBusy(true);
-    const a = await src.post<{ status?: string }>("/api/review", { workId: card.workId, moveId: move.id, verdict, revision: card.revision, note });
+    const a = await src.post<{ status?: string }>("/api/review", { workId: move.itemId, moveId: move.id, verdict, revision: move.revision, note });
     setBusy(false);
-    if (a.status === 200) toast(verdict === "confirm" ? "Review sent: confirmed." : verdict === "reopen" ? "Review sent: reopened." : "Review sent: asked a person.", "ok");
-    else toast(a.body.message || "The runtime didn't take the review.", "warn");
+    if (a.status !== 200) { toast(a.body.message || "The runtime didn't take the review.", "warn"); return; }
+    switch (a.body.status) {
+      case "consulted":
+        setMove({ ...move, review: "consulted" });
+        setNote("");
+        toast("Asked a person to review this move.");
+        break;
+      case "confirmed":
+      case "reopened":
+        setMove(null);
+        toast(a.body.status === "confirmed" ? "Move confirmed." : "Work item reopened.");
+        break;
+      case "stale":
+        setMove(null);
+        toast("Review skipped. The card has moved.", "warn");
+        break;
+      default:
+        toast("The runtime returned an unknown review outcome.", "warn");
+    }
   };
   return (
     <div className="review">
@@ -50,7 +71,7 @@ function Review({ src, board, card, toast }: { src: Source; board: Board; card: 
       <div className="row">
         <button type="button" className="btn primary" disabled={busy} onClick={() => void send("confirm")}>Confirm</button>
         <button type="button" className="btn" disabled={busy} onClick={() => void send("reopen")}>Reopen</button>
-        <button type="button" className="btn" disabled={busy} onClick={() => void send("consult")}>Ask a person</button>
+        {move.review === "consulted" ? <span className="dim">A person has been asked.</span> : <button type="button" className="btn" disabled={busy} onClick={() => void send("consult")}>Ask a person</button>}
       </div>
     </div>
   );
@@ -100,7 +121,7 @@ export function CardPanel({ src, board, card, onMove, toast }: {
       {card.reviewPending ? (
         <section className="panel-section">
           <h4>Review</h4>
-          <Review src={src} board={board} card={card} toast={toast} />
+          <Review key={JSON.stringify([card.workId, card.revision])} src={src} board={board} card={card} toast={toast} />
         </section>
       ) : null}
       <section className="panel-section">
@@ -121,6 +142,7 @@ export function MoveDialog({ src, board, card, to, onClose, toast }: {
   const [decision, setDecision] = useState<MoveDecision | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
+  const [attempt, setAttempt] = useState(0);
   const [sending, setSending] = useState(false);
   const needsWaiting = to.state === "waiting";
   const from = board.columns.find((c) => c.id === card.column);
@@ -139,7 +161,7 @@ export function MoveDialog({ src, board, card, to, onClose, toast }: {
     }, decision ? 350 : 0);
     return () => { live = false; clearTimeout(t); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, attempt, src]);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -168,6 +190,7 @@ export function MoveDialog({ src, board, card, to, onClose, toast }: {
           <div className={`verdict${decision ? ` v-${decision.verdict}` : ""}${checking ? " checking" : ""}`} aria-live="polite">
             {checking && !decision ? "Checking the move with the runtime." : problem ? problem : decision ? VERDICT[decision.verdict] : null}
             {decision?.review === "pending" ? <span className="dim"> A reviewer checks it after it lands.</span> : null}
+            {problem && !checking ? <button type="button" className="btn" onClick={() => setAttempt(attempt + 1)}>Retry preview</button> : null}
           </div>
           {failing.length ? <ul className="reasons">{failing.map((r) => <li key={r.ruleId} className="fail">{r.message}</li>)}</ul> : null}
           {passing.length ? <ul className="reasons">{passing.map((r) => <li key={r.ruleId}>{r.message}</li>)}</ul> : null}
