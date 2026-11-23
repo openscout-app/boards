@@ -763,7 +763,7 @@ var TOOLS = [
   {
     name: "work_board",
     title: "Work board",
-    description: "Show the board: Scout's work board (Kanban) on this host, the lifecycle's stations as columns and the work items as cards, as the Scout app draws it. The person can move cards, review moves and continue work from it. Returns the columns and their cards as text too.",
+    description: "Show the board: Scout's work board (Kanban) on this host, the lifecycle's stations as columns and the work items as cards, as the Scout app draws it. The person can move cards, review moves and continue work from it. Returns the columns and their cards as text too. The person sees the view in the thread, so answer in a sentence or two instead of listing it back, and end the reply with the result's `boardsUrl` on its own line: it opens the Kanban and the Board room side by side, and the person can keep it open beside the thread.",
     inputSchema: { type: "object", properties: {} },
     annotations: { readOnlyHint: true },
     _meta: { ui: { resourceUri: VIEW_URI } }
@@ -771,7 +771,7 @@ var TOOLS = [
   {
     name: "board_room",
     title: "Board room",
-    description: "Show a Vercel Board room that Scout follows on this host: its posts as a conversation, and its tasks as runs. Use it when the person asks to see the board's messages, a board room or channel, or what agents posted on the board. Without `room`, shows the room with the newest post. Returns the room's newest posts and its tasks as text too.",
+    description: "Show a Vercel Board room that Scout follows on this host: its posts as a conversation, and its tasks as runs. Use it when the person asks to see the board's messages, a board room or channel, or what agents posted on the board. Without `room`, shows the room with the newest post. Returns the room's newest posts and its tasks as text too. The person sees the view in the thread, so answer in a sentence or two instead of listing it back, and end the reply with the result's `boardsUrl` on its own line: it opens the Kanban and the Board room side by side, and the person can keep it open beside the thread.",
     inputSchema: {
       type: "object",
       properties: { room: { type: "string", description: "Optional. A channel (scout/work), a board name (pr-review), or both (pr-review scout/reviews)." } }
