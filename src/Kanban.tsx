@@ -56,6 +56,12 @@ function CardView({ card, selected, onOpen, onMenu, menuOpen, draggable }: {
   );
 }
 
+function BoardPicker({ boards, id, onPick }: { boards: Board["boards"]; id: string; onPick: (id: string) => void }) {
+  return <select className="pick" value={id} onChange={(e) => onPick(e.target.value)} aria-label="Board">
+    {boards.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+  </select>;
+}
+
 function MoveMenu({ targets, onPick, onClose }: { targets: Column[]; onPick: (c: Column) => void; onClose: () => void }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -83,7 +89,17 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact 
   const [menu, setMenu] = useState<string | null>(null);
   const [moving, setMoving] = useState<{ card: Card; to: Column } | null>(null);
   const [over, setOver] = useState<string | null>(null);
-  const board = read?.ok ? read.data : null;
+  const board = read?.ok && read.key === boardId ? read.data : null;
+  const activeBoard = boardId || board?.board?.id;
+  const [interactionBoard, setInteractionBoard] = useState(activeBoard);
+  // Discard the old board's interactions before React commits the new board.
+  if (interactionBoard !== activeBoard) {
+    setInteractionBoard(activeBoard);
+    setSelected(null);
+    setMenu(null);
+    setMoving(null);
+    setOver(null);
+  }
   const card = board?.cards.find((c) => c.workId === selected) || null;
   const byColumn = useMemo(() => {
     const m = new Map<string, Card[]>();
@@ -100,7 +116,14 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact 
       </Notice>
     );
   }
-  if (!read) return <Notice title="Reading the board" quiet />;
+  if (!read || read.key !== boardId || (boardId && board?.board && board.board.id !== boardId)) {
+    const boards = state.boards.list;
+    return <div className="kanban">
+      {boards.length > 1 && boards.some((b) => b.id === boardId) ?
+        <div className="band"><BoardPicker boards={boards} id={boardId} onPick={onPickBoard} /></div> : null}
+      <Notice title="Reading the board" quiet />
+    </div>;
+  }
   if (!read.ok) {
     if (read.error === "boards_unsupported") return <Notice title="This Scout is too old for boards."><p>Update Scout on this host:</p><Notice.Command text="scout update" /></Notice>;
     return <Notice title="The runtime didn't give the board."><p>{read.message}</p></Notice>;
@@ -121,9 +144,7 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact 
     <div className="kanban">
       <div className="band">
         {boards.length > 1 ? (
-          <select className="pick" value={board.board.id} onChange={(e) => onPickBoard(e.target.value)} aria-label="Board">
-            {boards.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+          <BoardPicker boards={boards} id={board.board.id} onPick={onPickBoard} />
         ) : <span className="band-title">{board.board.name}</span>}
         <span className="band-count" title={`${board.cards.length} cards`}>{board.cards.length}</span>
         {board.board.description && !compact ? <span className="band-note ell">{board.board.description}</span> : null}
@@ -163,7 +184,7 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact 
               <span className="sp" />
               <button type="button" className="icon-btn" aria-label="Close" onClick={() => setSelected(null)}><Close /></button>
             </div>
-            <CardPanel src={src} board={board} card={card} onMove={(to) => setMoving({ card, to })} toast={toast} />
+            <CardPanel key={card.workId} src={src} board={board} card={card} onMove={(to) => setMoving({ card, to })} toast={toast} />
           </aside>
         ) : null}
       </div>

@@ -13,13 +13,14 @@ const TICK = 10e3;
 export const RELEVANT = /^(collaboration\.|flight\.|vercel_board\.|agent\.endpoint\.)/;
 
 const subs = new Set(); // { res, board, room, sent: Map(kind -> json) }
+let generation = 0;
 let timer = null, busy = false, again = false, ticker = null, offEvents = null;
 
 /** GET /api/events: an event stream of what one page draws. */
 export async function events(req, res, { board = "", room = "" } = {}) {
   res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-store", "x-accel-buffering": "no" });
   res.write("retry: 2000\n\n");
-  const sub = { res, board, room, sent: new Map() };
+  const sub = { res, board, room, sent: new Map(), delivered: 0 };
   subs.add(sub);
   const keepalive = setInterval(() => res.write(": keepalive\n\n"), 20e3);
   req.on("close", () => {
@@ -41,6 +42,7 @@ async function settle(p) {
 /** Read once for every board and room someone watches, and send each page what changed for it. */
 async function push(only = [...subs]) {
   if (!only.length) return;
+  const round = ++generation;
   const state = await readState();
   const boards = new Map(), rooms = new Map();
   if (state.runtime.up && state.boards?.supported) {
@@ -53,6 +55,9 @@ async function push(only = [...subs]) {
     const out = [["state", state]];
     if (boards.has(s.board)) out.push(["board", { key: s.board, ...(await boards.get(s.board)) }]);
     if (rooms.has(s.room)) out.push(["room", { key: s.room, ...(await rooms.get(s.room)) }]);
+    // A newer refresh can finish while this subscriber's first snapshot is in flight.
+    if (!subs.has(s) || s.res.destroyed || s.res.writableEnded || round < s.delivered) continue;
+    s.delivered = round;
     for (const [kind, data] of out) {
       const json = JSON.stringify(data);
       if (s.sent.get(kind) === json) continue;

@@ -82,6 +82,10 @@ export function App({ src, initialBoard = "", initialRoom = "", only, actions, e
   const roomId = useMemo(() => (rooms.some((r) => r.conversationId === roomWant) ? roomWant : newest(rooms)?.conversationId || ""), [rooms, roomWant]);
   useEffect(() => { if (roomId && roomId !== roomWant) setRoomWant(roomId); }, [roomId, roomWant]);
   const { state, unreachable, board, room } = live0;
+  const resolvedBoardId = board?.ok && board.key === boardId ? board.data.board?.id : undefined;
+  useEffect(() => {
+    if (boardId && resolvedBoardId && resolvedBoardId !== boardId) setBoardId(resolvedBoardId);
+  }, [boardId, resolvedBoardId]);
 
   const toast = useCallback((text: string, tone: "ok" | "warn" = "ok") => {
     const id = Date.now() + Math.random();
@@ -143,8 +147,8 @@ export function App({ src, initialBoard = "", initialRoom = "", only, actions, e
         ) : null}
         <span className="sp" />
         {state ? (
-          <span className={`status${state.runtime.up ? " up" : ""}`} title={state.runtime.url}>
-            <span className="dot" />{state.runtime.up ? `Runtime${state.runtime.version ? ` ${state.runtime.version}` : ""}` : "No runtime"}
+          <span role="status" className={`status${!unreachable && state.runtime.up ? " up" : ""}`} title={state.runtime.url}>
+            <span className="dot" />{unreachable ? "Disconnected" : state.runtime.up ? `Runtime${state.runtime.version ? ` ${state.runtime.version}` : ""}` : "No runtime"}
           </span>
         ) : null}
         {actions}
