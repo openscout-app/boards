@@ -1,53 +1,9 @@
-/* Scout's design tokens, as the Scout app sets them: its default palette in light and dark, its
- * lines, radii, spacing and type. Colours follow the system's light or dark unless the page says
- * otherwise with data-theme. */
+/* Board surfaces use Scout's existing light and dark palette. */
+@import "@openscout/workspace-ui/tokens.css";
 
 :root {
-  /* spacing */
-  --space-3xs: 2px;
-  --space-2xs: 4px;
-  --space-xs: 6px;
-  --space-sm: 8px;
-  --space-md: 10px;
-  --space-lg: 12px;
-  --space-xl: 14px;
-  --space-2xl: 16px;
-  --space-3xl: 20px;
-  --space-4xl: 24px;
-  --space-5xl: 32px;
-
-  /* radius */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-pill: 999px;
-
-  /* type */
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  --font-weight-body: 300;
-  --text-2xs: 9px;
-  --text-xs: 10px;
-  --text-sm: 11px;
-  --text-md: 12px;
-  --text-lg: 13px;
-  --text-xl: 14px;
-  --text-2xl: 15px;
-  --text-3xl: 17px;
-  --leading-tight: 1.35;
-  --leading-snug: 1.45;
-  --tracking-sm: 0.04em;
-
-  /* motion */
-  --motion-fast: 120ms;
-  --motion-state: 220ms;
-  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
-
-  /* layout */
-  --top-row: 40px;
-  --pane-band: 32px;
-
+  --top-row: var(--scout-top-row);
+  --pane-band: var(--scout-pane-band);
   /* the palette: light */
   color-scheme: light;
   --bg: oklch(0.978 0.004 85);

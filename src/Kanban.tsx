@@ -173,7 +173,7 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
           {board.columns.map((col) => {
             const cards = byColumn.get(col.id) || [];
             return (
-              <section key={col.id} className={`column${over === col.id ? " over" : ""}`} aria-label={col.name}
+              <section key={col.id} className={`column${over === col.id ? " over" : ""}`} aria-label={col.name} data-scout-point={col.id} data-scout-label={col.name}
                 onDragOver={(e) => { if (e.dataTransfer.types.includes("text/x-scout-work")) { e.preventDefault(); setOver(col.id); } }}
                 onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(null); }}
                 onDrop={(e) => drop(e, col)}>
@@ -198,7 +198,7 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
         </div>
         {empty ? <div className="kanban-empty">Nothing on this board yet. Work items the runtime places on it show here.</div> : null}
         {card ? (
-          <aside className="panel" aria-label={card.title}>
+          <aside className="panel" aria-label={card.title} data-scout-point={card.workId} data-scout-label={card.title}>
             <div className="band">
               <span className="band-title">Work item</span>
               <span className="sp" />
