@@ -1,0 +1,35 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "scout-boards",
+  "version": "0.1.0",
+  "description": "Scout's work board in the thread: the lifecycle's stations as columns and the work items as cards. Move cards, review moves and continue work without leaving the agent.",
+  "author": {
+    "name": "OpenScout",
+    "url": "https://openscout.app"
+  },
+  "homepage": "https://openscout.app",
+  "repository": "https://github.com/openscout-app/boards",
+  "keywords": ["openscout", "kanban", "work-board", "mcp-apps"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Scout boards",
+        "shortDescription": "Scout's work board in the thread",
+        "developerName": "OpenScout",
+        "category": "Productivity",
+        "capabilities": ["Interactive"],
+        "websiteURL": "https://openscout.app",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/icon.png",
+        "defaultPrompt": [
+          "Show me the work board.",
+          "What's waiting on review?"
+        ]
+      }
+    },
+    "ai.capy": {
+      "displayName": "Scout boards",
+      "icon": "./assets/icon.png"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "scout-boards",
+  "version": "0.1.0",
+  "description": "Scout's work board inside an agent's thread, as an MCP App.",
+  "type": "module",
+  "bin": {
+    "scout-boards": "server.mjs"
+  },
+  "files": [
+    "server.mjs",
+    "view/",
+    "plugin/"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "homepage": "https://openscout.app",
+  "repository": "github:openscout-app/boards",
+  "license": "UNLICENSED"
+}

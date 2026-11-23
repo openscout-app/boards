@@ -1,0 +1,14 @@
+{
+  "name": "scout-boards",
+  "version": "0.1.0",
+  "description": "Scout's work board in the thread: the lifecycle's stations as columns and the work items as cards. Move cards, review moves and continue work without leaving the agent.",
+  "author": {
+    "name": "OpenScout",
+    "url": "https://openscout.app"
+  },
+  "homepage": "https://openscout.app",
+  "repository": "https://github.com/openscout-app/boards",
+  "keywords": ["openscout", "kanban", "work-board", "mcp-apps"],
+  "mcpServers": "./mcp.json",
+  "icon": "./assets/icon.png"
+}

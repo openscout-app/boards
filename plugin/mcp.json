@@ -1,0 +1,10 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "scout-boards": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "github:openscout-app/boards"]
+    }
+  }
+}
