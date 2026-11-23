@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import type { Board, Card, Column, Read, RoomRef, State } from "./types";
 import type { Source } from "./source";
-import { ago, initials, label, ownerOf } from "./util";
+import { ago, initials, label, ownerOf, trackerOf } from "./util";
 import { More, Close, Thread } from "./icons";
 import { CardPanel, MoveDialog } from "./CardPanel";
 import { Notice } from "./Notice";
@@ -20,11 +20,14 @@ function CardView({ card, selected, onOpen, onMenu, menuOpen, draggable, room, o
   const at = card.lastMeaningfulAt ?? card.updatedAt ?? card.createdAt;
   const run = card.activeFlight;
   const owner = ownerOf(card);
+  // a card an outside tracker places moves there, not here
+  const tracker = trackerOf(card);
   return (
     <div
       className={`card${selected ? " selected" : ""}`}
       role="button" tabIndex={0} aria-label={card.title}
-      draggable={draggable}
+      title={tracker ? `Moves on ${tracker}` : undefined}
+      draggable={draggable && !tracker}
       onDragStart={(e) => { e.dataTransfer.setData("text/x-scout-work", card.workId); e.dataTransfer.effectAllowed = "move"; }}
       onClick={onOpen}
       // keys on the card itself; a button inside it (the room link, the move menu) handles its own
@@ -57,10 +60,12 @@ function CardView({ card, selected, onOpen, onMenu, menuOpen, draggable, room, o
           {run.startedAt ? <span className="age">{ago(run.startedAt)}</span> : null}
         </div>
       ) : null}
-      <button type="button" className={`card-more${menuOpen ? " on" : ""}`} aria-label={`Move ${card.title}`} aria-haspopup="menu" aria-expanded={menuOpen}
-        onClick={(e) => { e.stopPropagation(); onMenu(); }}>
-        <More />
-      </button>
+      {tracker ? null : (
+        <button type="button" className={`card-more${menuOpen ? " on" : ""}`} aria-label={`Move ${card.title}`} aria-haspopup="menu" aria-expanded={menuOpen}
+          onClick={(e) => { e.stopPropagation(); onMenu(); }}>
+          <More />
+        </button>
+      )}
     </div>
   );
 }
@@ -147,6 +152,8 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
     setOver(null);
     const id = e.dataTransfer.getData("text/x-scout-work");
     const c = board.cards.find((x) => x.workId === id);
+    const tracker = c ? trackerOf(c) : null;
+    if (c && tracker) { toast(`This card moves on ${tracker}.`, "warn"); return; }
     if (c && c.column !== to.id) setMoving({ card: c, to });
   };
   const empty = !board.cards.length;

@@ -47,6 +47,7 @@ export async function readBoard(want) {
   if (!chosen) return { boards, board: null, columns: [], transitions: [], cards: [] };
   try {
     const board = { boards, ...shapeBoard(await rt(`/v1/boards/${encodeURIComponent(chosen.id)}?limit=${BOARD_LIMIT}`)) };
+    for (const c of board.cards) sourceOf.set(c.workId, c.source?.adapterId || null);
     await attachRooms(board.cards).catch(() => {});
     return board;
   } catch (e) {
@@ -162,12 +163,34 @@ export async function readState() {
 
 // ---- writes, each through the runtime, which checks and records it
 
+/**
+ * Cards from an outside tracker (a Vercel Board task, later a Linear issue) are placed by that
+ * tracker: Scout follows them, and the next update from the tracker would undo a move made here.
+ * So they are not moved or claimed from Scout; their review is Scout's own and stays open.
+ */
+export const TRACKERS = { "vercel-board": "Vercel Board", linear: "Linear" };
+const sourceOf = new Map();
+
+async function trackerOf(workId) {
+  if (!sourceOf.has(workId)) {
+    // a card this server hasn't read yet: read the boards once to learn where it comes from
+    for (const b of (await listBoards()) || []) await readBoard(b.id).catch(() => null);
+  }
+  return TRACKERS[sourceOf.get(workId)] || null;
+}
+
+async function notFromTracker(workId, verb) {
+  const tracker = await trackerOf(workId);
+  if (tracker) throw new Refused(409, "tracker_owned", `This card follows a task on ${tracker}, which decides where it sits. It isn't ${verb} from Scout; its review is.`);
+}
+
 async function move(b) {
   need(typeof b.workId === "string" && WORK_ID.test(b.workId), "workId is required");
   need(typeof b.to === "string" && ID.test(b.to), "to is required");
   const body = { workId: b.workId, to: b.to, actorId: "operator", dryRun: b.dryRun === true };
   if (typeof b.note === "string" && b.note.trim()) body.note = b.note.trim().slice(0, 4000);
   if (b.waitingOn && typeof b.waitingOn.label === "string" && b.waitingOn.label.trim()) body.waitingOn = { label: b.waitingOn.label.trim().slice(0, 400) };
+  await notFromTracker(b.workId, "moved");
   return rt("/v1/work/move", { method: "POST", body });
 }
 
@@ -187,6 +210,7 @@ async function claim(b) {
   need(["claim", "release"].includes(action), "action is claim or release");
   const body = { workId: b.workId, action, actorId: "operator" };
   if (Number.isInteger(b.leaseGeneration)) body.leaseGeneration = b.leaseGeneration;
+  await notFromTracker(b.workId, "claimed");
   return rt("/v1/work/claim", { method: "POST", body });
 }
 

@@ -116,6 +116,19 @@ test("a card links to the room it came from, and only to a room Scout follows", 
   assert.equal(asked(), before, "a task's room is asked once, then kept");
 });
 
+test("a card from an outside tracker isn't moved or claimed from Scout", async () => {
+  const sent = () => fake.calls.filter((c) => c.path === "/v1/work/move" || c.path === "/v1/work/claim").length;
+  const before = sent();
+  for (const [path, body] of [["/api/move", { workId: "work-102", to: "doing", dryRun: true }], ["/api/move", { workId: "work-102", to: "doing" }], ["/api/claim", { workId: "work-102" }]]) {
+    const r = await post(path, body);
+    assert.equal(r.status, 409, path);
+    assert.equal(r.body.error, "tracker_owned");
+    assert.match(r.body.message, /Vercel Board/);
+  }
+  assert.equal(sent(), before, "nothing reached the runtime");
+  assert.equal((await post("/api/move", { workId: "work-101", to: "ready", dryRun: true })).status, 200, "Scout's own work still moves");
+});
+
 test("a runtime without the Board adapter has no rooms", async () => {
   const bare = await fakeRuntime({ rooms: false });
   use(bare);
