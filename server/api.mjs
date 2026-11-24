@@ -3,12 +3,14 @@
 //
 // The routes are plain functions (`route`), so the MCP server answers the view's reads and
 // writes with exactly the same code, without HTTP in between.
+import { randomUUID } from "node:crypto";
+import { APP, hello } from "./local.mjs";
 import { RuntimeDown, RuntimeError, health, rt } from "./runtime.mjs";
 import { pickBoard, shapeBoard, shapeBoards } from "./board.mjs";
 import { defaultView, foldRoom, harnessesFrom, roomsFrom } from "./rooms.mjs";
 import { changed, events } from "./live.mjs";
 
-export const APP = "scout-boards";
+export { APP };
 export const VERSION = "0.2.0";
 
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/;
@@ -161,6 +163,27 @@ export async function readState() {
   return { runtime, boards, rooms };
 }
 
+/** Probe the board list and the move writer without changing a card. */
+export async function readiness() {
+  const [node, readable] = await Promise.all([
+    rt("/v1/node", { ms: 2500 }).catch(() => null),
+    rt("/v1/boards", { ms: 2500 }).then((d) => Array.isArray(d?.boards), () => false),
+  ]);
+  let writable = false;
+  if (readable) {
+    const workId = `boards-readiness-${randomUUID()}`;
+    try {
+      const out = await rt("/v1/work/move", { method: "POST", ms: 2500,
+        body: { workId, to: "ready", actorId: "operator", dryRun: true } });
+      writable = Boolean(out?.decision) && out.applied === false;
+    } catch (e) {
+      // A precise miss proves we reached the move writer, not a generic route 404.
+      writable = e instanceof RuntimeError && e.status === 404 && e.code === `No work item ${workId}.`;
+    }
+  }
+  return { listening: true, readable, writable, nodeId: typeof node?.id === "string" ? node.id : null };
+}
+
 // ---- writes, each through the runtime, which checks and records it
 
 /**
@@ -216,14 +239,15 @@ async function claim(b) {
 
 // ---- the routes, for HTTP and for the MCP view alike
 
-export const READS = ["/api/hello", "/api/state", "/api/board", "/api/rooms", "/api/room", "/api/moves"];
+export const READS = ["/api/hello", "/api/status", "/api/state", "/api/board", "/api/rooms", "/api/room", "/api/moves"];
 export const WRITES = ["/api/move", "/api/review", "/api/claim"];
 
 /** One API call. Resolves with { status, body }; never throws. */
 export async function route(method, pathname, query = new URLSearchParams(), body = {}) {
   try {
     if (method === "GET") {
-      if (pathname === "/api/hello") return ok({ app: APP, version: VERSION });
+      if (pathname === "/api/hello") return ok({ ...hello(), version: VERSION });
+      if (pathname === "/api/status") return ok(await readiness());
       if (pathname === "/api/state") return ok(await readState());
       if (pathname === "/api/board") return ok(await readBoard(query.get("id") || undefined));
       if (pathname === "/api/rooms") {

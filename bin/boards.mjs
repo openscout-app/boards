@@ -4,14 +4,13 @@
 // npx github:openscout-app/boards mcp                         the tools themselves (agent hosts run this)
 //
 // Starting: if Scout boards already runs on the port, it opens that one; if something else holds
-// the port, it takes the next free one.
+// the port, automatic startup can take another one. Explicit ports are strict.
 import { execFile, execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
-const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 const BIN = fileURLToPath(import.meta.url);
 const ROOT = path.join(path.dirname(BIN), "..");
 // how people run it: straight from the open repository on GitHub
@@ -100,12 +99,15 @@ if (args[0] === "mcp" || bareOnPipes) {
   fail(`no command ${args[0]}. See --help.`);
 } else {
   const { serve } = await import("../server/serve.mjs");
-  const { start, FIRST_PORT } = await import("../server/local.mjs");
-  const asked = Number(opt("--port") ?? process.env.PORT) || 0;
+  const { start, portOptions } = await import("../server/local.mjs");
+  const { runtimeUrl } = await import("../server/runtime.mjs");
+  process.env.SCOUT_RUNTIME_URL = runtimeUrl();
   const open = !args.includes("--no-open");
-  if (!fs.existsSync(path.join(ROOT, "dist", "index.html"))) fail("the page isn't built. Run `npm run build` first.");
   try {
-    const { url, reused } = await start({ first: asked || FIRST_PORT, strict: Boolean(asked), serve });
+    const { url, reused } = await start({ ...portOptions(args, process.env.PORT), serve: (port) => {
+      if (!fs.existsSync(path.join(ROOT, "dist", "index.html"))) throw new Error("the page isn't built. Run `npm run build` first.");
+      return serve(port);
+    } });
     console.log(reused ? `Scout boards is already running at ${url}` : `Scout boards is at ${url}`);
     if (open) execFile("open", [url], () => {});
     if (reused) process.exit(0);
