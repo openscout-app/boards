@@ -13,8 +13,19 @@ board's rules and records it.
 npx -y github:openscout-app/boards
 ```
 
-It opens http://localhost:4802 and reads everything from Scout's runtime on
-this host. It needs Node 20 or later.
+The launcher defaults to http://localhost:4802. Add `--no-open` to skip the browser.
+It reuses a listener for the same app and configured runtime (`SCOUT_RUNTIME_URL`),
+or prints the available URL it chose. With `--port <n>` (or `PORT`), it
+uses only that port and reports a collision rather than moving to another one.
+
+`GET /api/hello` identifies the app and its configured runtime instance without
+calling Scout. `GET /api/status` probes the current runtime: `listening` describes
+the local server, `readable` and `writable` describe the board list and
+dry-run move endpoint, and `nodeId` is null when the runtime does not identify itself.
+The write probe does not change records or guarantee a particular action will
+pass the runtime's rules.
+
+Boards needs Node 20 or later.
 
 ## First run
 
