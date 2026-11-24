@@ -9,6 +9,8 @@ import { Kanban } from "./Kanban";
 import { Room, RoomList } from "./Room";
 import { Notice } from "./Notice";
 import { Kanban as KanbanGlyph, ScoutMark, Thread } from "./icons";
+import { ScoutFrame, ScoutShell } from "@openscout/workspace-ui/react";
+import { renderNavCenter } from "@openscout/workspace-ui/tabs";
 import { prefs } from "./util";
 import type { RoomRef } from "./types";
 
@@ -118,11 +120,16 @@ export function App({ src, initialBoard = "", initialRoom = "", only, actions, e
     ) : <div className="pane solo">{roomPane}</div>;
   }
 
+  const Shell = embedded ? "div" : ScoutShell;
+  const Header = embedded ? "header" : ScoutFrame;
   return (
-    <div className={`app${embedded ? " embedded" : ""}`}>
-      <header className="top">
-        <span className="brand"><ScoutMark /><span>Scout boards</span></span>
-        {!only && state?.runtime.up ? (
+    <Shell className={`app${embedded ? " embedded" : ""}`}>
+      <Header product="Boards" className={embedded ? "top" : undefined}>
+        {embedded && <span className="brand"><ScoutMark /><span>Scout Boards</span></span>}
+        {!embedded ? renderNavCenter<Area, Area>({
+          label: "Board navigation", activeKey: area, navigate: pickArea,
+          items: [{ key: "conversations", route: "conversations", label: "Conversations" }, { key: "board", route: "board", label: "Board" }],
+        }) : !only && state?.runtime.up ? (
           <div className="tabs areas" role="tablist" aria-label="Area">
             <button type="button" role="tab" aria-selected={area === "conversations"} onClick={() => pickArea("conversations")}><Thread />Conversations</button>
             <button type="button" role="tab" aria-selected={area === "board"} onClick={() => pickArea("board")}><KanbanGlyph />Board</button>
@@ -135,11 +142,12 @@ export function App({ src, initialBoard = "", initialRoom = "", only, actions, e
           </span>
         ) : null}
         {actions}
-      </header>
-      <main className="main">{body}</main>
+      </Header>
+      <main className="main" data-scout-content="" data-scout-point={area === "board" ? boardId || "board" : roomId || "conversations"}
+        data-scout-label={area === "board" ? "Work board" : "Board conversations"}>{body}</main>
       <div className="toasts" aria-live="polite">
         {toasts.map((t) => <div key={t.id} className={`toast ${t.tone}`}>{t.text}</div>)}
       </div>
-    </div>
+    </Shell>
   );
 }
