@@ -1,15 +1,45 @@
-/* Board surfaces use Scout's existing light and dark palette. */
-@import "@openscout/workspace-ui/tokens.css";
-
+/* Self-contained HUD Carbon design tokens for Scout Boards (standalone & MCP view). */
 :root {
+  --space-2xs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+  --space-4xl: 40px;
+  --space-5xl: 48px;
+
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --text-xs: 11px;
+  --text-sm: 11.5px;
+  --text-md: 12.5px;
+  --text-lg: 13px;
+  --text-xl: 13.5px;
+  --text-2xl: 14.5px;
+
+  --leading-tight: 1.36;
+  --leading-snug: 1.48;
+  --motion-fast: 120ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
   --font-weight-body: 400;
   --scout-pane-title-weight: 500;
   --rail-max: 1228px;
   --rail-gutter: 24px;
   --action-height: 28px;
-  --top-row: var(--scout-top-row);
-  --pane-band: var(--scout-pane-band);
-  /* the palette: light */
+  --top-row: 40px;
+  --pane-band: 38px;
+
   color-scheme: light;
   --bg: #fbfbfa;
   --surface: #ffffff;
@@ -17,13 +47,13 @@
   --soft: #55575e;
   --faint: #8a8d94;
   --accent: #b86e00;
-  --green: oklch(0.64 0.16 155);
+  --green: oklch(0.60 0.15 155);
   --amber: oklch(0.62 0.14 70);
-  --red: oklch(0.62 0.19 25);
+  --red: oklch(0.58 0.19 25);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme="light"]):not([data-scout-theme="light"]) {
     color-scheme: dark;
     --bg: #0c0d10;
     --surface: #12141a;
@@ -31,12 +61,14 @@
     --soft: #a3a6ad;
     --faint: #6d7078;
     --accent: #e8a33d;
-    --green: oklch(0.80 0.15 155);
+    --green: oklch(0.78 0.14 155);
     --amber: oklch(0.82 0.15 85);
     --red: oklch(0.72 0.18 25);
   }
 }
-:root[data-theme="dark"] {
+
+:root[data-theme="dark"],
+:root[data-scout-theme="dark"] {
   color-scheme: dark;
   --bg: #0c0d10;
   --surface: #12141a;
@@ -44,26 +76,34 @@
   --soft: #a3a6ad;
   --faint: #6d7078;
   --accent: #e8a33d;
-  --green: oklch(0.80 0.15 155);
+  --green: oklch(0.78 0.14 155);
   --amber: oklch(0.82 0.15 85);
   --red: oklch(0.72 0.18 25);
 }
 
-/* derived: one rule for both themes */
+:root[data-scout-theme="light"] {
+  color-scheme: light;
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --ink: #18191c;
+  --soft: #55575e;
+  --faint: #8a8d94;
+  --accent: #b86e00;
+}
+
 :root {
   --dim: var(--soft);
   --raised: color-mix(in srgb, var(--surface) 70%, var(--bg));
   --sunken: color-mix(in srgb, var(--ink) 4%, var(--bg));
   --hover: color-mix(in srgb, var(--ink) 6%, transparent);
   --accent-soft: color-mix(in srgb, var(--accent) 12%, transparent);
-  --accent-line: color-mix(in srgb, var(--accent) 38%, transparent);
+  --accent-line: color-mix(in srgb, var(--accent) 44%, transparent);
   --amber-soft: color-mix(in srgb, var(--amber) 12%, transparent);
   --amber-line: color-mix(in srgb, var(--amber) 36%, transparent);
   --red-soft: color-mix(in srgb, var(--red) 12%, transparent);
-  /* lines: a row hairline, a region's edge, the page's edge */
-  --line: color-mix(in srgb, var(--ink) 7%, transparent);
-  --line-strong: color-mix(in srgb, var(--ink) 12%, transparent);
-  --line-edge: color-mix(in srgb, var(--ink) 20%, transparent);
-  --scrim: color-mix(in srgb, var(--bg) 55%, transparent);
-  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+  --line: color-mix(in srgb, var(--ink) 8%, transparent);
+  --line-strong: color-mix(in srgb, var(--ink) 13%, transparent);
+  --line-edge: color-mix(in srgb, var(--ink) 22%, transparent);
+  --scrim: color-mix(in srgb, var(--bg) 62%, transparent);
+  --focus-ring: 0 0 0 2px color-mix(in srgb, var(--accent) 45%, transparent);
 }

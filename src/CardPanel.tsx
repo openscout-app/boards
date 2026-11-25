@@ -77,8 +77,11 @@ function Review({ src, board, card, toast }: { src: Source; board: Board; card: 
   );
 }
 
-export function CardPanel({ src, board, card, onMove, toast }: {
-  src: Source; board: Board; card: Card; onMove: (to: Column) => void; toast: (t: string, tone?: "ok" | "warn") => void;
+export function CardPanel({ src, board, card, onMove, onOpenSession, onOpenExchange, toast }: {
+  src: Source; board: Board; card: Card; onMove: (to: Column) => void;
+  onOpenSession?: (sessionId: string) => void;
+  onOpenExchange?: (conversationId: string, workId: string) => void;
+  toast: (t: string, tone?: "ok" | "warn") => void;
 }) {
   const column = board.columns.find((c) => c.id === card.column);
   const targets = targetsOf(board, card);
@@ -96,6 +99,20 @@ export function CardPanel({ src, board, card, onMove, toast }: {
     <div className="panel-body">
       <h3 className="panel-title">{card.title}</h3>
       {card.summary ? <p className="panel-summary">{card.summary}</p> : null}
+      {(run?.sessionId && onOpenSession) || (card.conversationId && onOpenExchange) ? (
+        <div className="row wrap">
+          {run?.sessionId && onOpenSession ? (
+            <button type="button" className="btn primary" onClick={() => onOpenSession(run.sessionId!)}>
+              Open session
+            </button>
+          ) : null}
+          {card.conversationId && onOpenExchange ? (
+            <button type="button" className="btn" onClick={() => onOpenExchange(card.conversationId!, card.workId)}>
+              Open exchange
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       <dl className="facts">
         <Fact k="Column">{column?.name || "None"}</Fact>
         <Fact k="State">{label(card.state)}</Fact>

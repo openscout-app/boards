@@ -4,97 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Scout Boards</title>
-    <link rel="icon" href="/scout-glyph-ink.svg" type="image/svg+xml" />
-    <!-- Critical styles are inline so the board can paint before its assets arrive. -->
-    <style>
-      html:has([data-scout-boot="board"]) {
-        --boot-ground: #fbfbfa; --boot-surface: #fff; --boot-ink: #18191c; --boot-soft: #55575e;
-        background: var(--boot-ground);
-      }
-      @media (prefers-color-scheme: dark) {
-        html:has([data-scout-boot="board"]) {
-          --boot-ground: #0c0d10; --boot-surface: #12141a; --boot-ink: #eceef2; --boot-soft: #a3a6ad;
-        }
-      }
-      body:has([data-scout-boot="board"]) { margin: 0; }
-      [data-scout-boot="board"] {
-        --boot-line: color-mix(in srgb, var(--boot-ink) 12%, transparent);
-        --boot-placeholder: color-mix(in srgb, var(--boot-ink) 9%, transparent);
-        color: var(--boot-ink);
-        background: var(--boot-ground);
-        font: 400 13px/1.45 system-ui, sans-serif;
-      }
-      .boot-masthead {
-        box-sizing: border-box; height: 40px; padding: 0 16px;
-        display: flex; align-items: center; gap: 8px;
-        border-bottom: 1px solid var(--boot-line); font-size: 15px; font-weight: 500;
-      }
-      .boot-status {
-        display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 2px 8px;
-        border: 1px solid var(--boot-line); border-radius: 999px;
-        color: var(--boot-soft); font-size: 11px; font-weight: 400;
-      }
-      .boot-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-      .boot-rail { box-sizing: border-box; max-width: 1228px; margin: 0 auto; padding: 0 24px; }
-      .boot-band { display: flex; align-items: center; height: 32px; padding: 0 12px; border-bottom: 1px solid var(--boot-line); }
-      .boot-columns { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .boot-column { min-height: 216px; padding: 0 8px; border-right: 1px solid var(--boot-line); }
-      .boot-column:last-child { border-right: 0; }
-      .boot-heading { display: flex; align-items: center; gap: 6px; height: 30px; padding-inline: 4px; }
-      .boot-bar { display: block; width: 64px; height: 8px; border-radius: 2px; background: var(--boot-placeholder); }
-      .boot-heading .boot-bar + .boot-bar { width: 12px; }
-      .boot-card {
-        display: grid; gap: 10px; padding: 12px; margin-bottom: 6px;
-        background: var(--boot-surface); border: 1px solid var(--boot-line); border-radius: 4px;
-      }
-      .boot-card .boot-bar:first-child { width: 72%; }
-      .boot-card .boot-bar:last-child { width: 38%; }
-      @media (max-width: 860px) {
-        .boot-columns { grid-template-columns: repeat(4, 78vw); overflow: hidden; }
-      }
-      @media (prefers-reduced-motion: no-preference) {
-        .boot-card .boot-bar { animation: board-boot-pulse 1.8s ease-in-out infinite alternate; }
-        @keyframes board-boot-pulse { to { opacity: .55; } }
-      }
-    </style>
   </head>
   <body>
-    <div id="root">
-      <div data-scout-boot="board">
-        <header class="boot-masthead">
-          <svg width="16" height="16" aria-hidden="true" viewBox="5 -4 214 244"><path d="M103.01 13.21 Q112 8 120.99 13.21 L198.01 57.79 Q207 63 207 73.39 L207 162.61 Q207 173 198.01 178.21 L120.99 222.79 Q112 228 103.01 222.79 L25.99 178.21 Q17 173 17 162.61 L17 73.39 Q17 63 25.99 57.79 Z" fill="none" stroke="currentColor" stroke-width="24" stroke-linejoin="round"/><path d="M112 70 154 94v48l-42 24-42-24V94Z" fill="currentColor"/></svg>
-          <span>Scout Boards</span>
-          <span class="boot-status" role="status">Loading board</span>
-        </header>
-        <div class="boot-rail" aria-hidden="true">
-          <div class="boot-band"><span class="boot-bar"></span></div>
-          <div class="boot-columns">
-            <div class="boot-column">
-              <div class="boot-heading"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-              <div class="boot-card"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-              <div class="boot-card"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-            </div>
-            <div class="boot-column">
-              <div class="boot-heading"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-              <div class="boot-card"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-              <div class="boot-card"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-              <div class="boot-card"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-            </div>
-            <div class="boot-column">
-              <div class="boot-heading"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-              <div class="boot-card"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-              <div class="boot-card"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-            </div>
-            <div class="boot-column">
-              <div class="boot-heading"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-              <div class="boot-card"><span class="boot-bar"></span><span class="boot-bar"></span></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div data-scout-tools="boards" data-scout-label="Scout Boards"></div>
-    <!-- Load the app and its stylesheet after the independently styled shell. -->
-    <script type="module">import("/src/main.tsx");</script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

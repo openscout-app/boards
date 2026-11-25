@@ -7,7 +7,6 @@ import { App } from "./App";
 import { mcpSource } from "./source";
 import { displayMode, openLink, requestDisplayMode, startBridge, subscribe, toolResult } from "./mcp";
 import { Expand, PopOut } from "./icons";
-import "@openscout/workspace-ui/frame.css";
 import "./tokens.css";
 import "./app.css";
 

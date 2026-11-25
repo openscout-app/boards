@@ -109,7 +109,11 @@ if (args[0] === "mcp" || bareOnPipes) {
       return serve(port);
     } });
     console.log(reused ? `Scout boards is already running at ${url}` : `Scout boards is at ${url}`);
-    if (open) execFile("open", [url], () => {});
+    if (open) {
+      const cmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
+      const cmdArgs = process.platform === "win32" ? ["/c", "start", url] : [url];
+      execFile(cmd, cmdArgs, () => {});
+    }
     if (reused) process.exit(0);
   } catch (e) { fail(e.message); }
 }
