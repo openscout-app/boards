@@ -60,7 +60,7 @@ export default defineConfig(({ mode }) => {
   return defineScoutThinViteConfig({
     product: "Boards",
     variant: "board",
-    rail: "wide",
+    rail: "full",
     port: 4802,
     serverEntry: "src/server.ts",
   });

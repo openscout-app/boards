@@ -1,11 +1,14 @@
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
+  OpsGlyph,
   ScoutAppFrame,
   StandaloneRecordRouter,
   navigateBrowser,
   useScoutThinHost,
+  type ScoutPageTab,
   type ScoutThinStatusBase,
+  type ScoutTopNavTab,
 } from "scout-app/shell";
 import "scout-app/shell.css";
 import { App, initialArea, type Area } from "./App";
@@ -16,6 +19,10 @@ import "./app.css";
 interface BoardsHostStatus extends ScoutThinStatusBase {
   localSessions: number;
 }
+
+const BOARDS_PAGES: readonly ScoutPageTab[] = [
+  { id: "boards", label: "Boards", route: "/", icon: OpsGlyph },
+];
 
 function StandaloneBoardsApp() {
   const q = new URLSearchParams(window.location.search);
@@ -42,43 +49,39 @@ function StandaloneBoardsApp() {
         }
       : null;
 
-  const areaSwitch = status?.runtimeUp ? (
-    <div className="boards-masthead-tabs" role="tablist" aria-label="Boards area">
-      <button
-        type="button"
-        role="tab"
-        aria-selected={area === "board"}
-        className="boards-masthead-tab"
-        onClick={() => {
-          setArea("board");
-          if (window.location.pathname !== "/") navigateBrowser("/?area=board");
-        }}
-      >
-        Board
-      </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={area === "conversations"}
-        className="boards-masthead-tab"
-        onClick={() => {
-          setArea("conversations");
-          if (window.location.pathname !== "/") navigateBrowser("/?area=conversations");
-        }}
-      >
-        Conversations
-      </button>
-    </div>
-  ) : null;
+  const topTabs: readonly ScoutTopNavTab[] | undefined = status?.runtimeUp
+    ? [
+        {
+          id: "board",
+          label: "Board",
+          active: area === "board",
+          onSelect: () => {
+            setArea("board");
+            if (window.location.pathname !== "/") navigateBrowser("/?area=board");
+          },
+        },
+        {
+          id: "conversations",
+          label: "Conversations",
+          active: area === "conversations",
+          onSelect: () => {
+            setArea("conversations");
+            if (window.location.pathname !== "/") navigateBrowser("/?area=conversations");
+          },
+        },
+      ]
+    : undefined;
 
   return (
     <ScoutAppFrame
       product="Boards"
+      pages={BOARDS_PAGES}
+      topTabs={topTabs}
+      chrome="sidebar"
       variant="board"
-      rail="wide"
+      rail="full"
       status={badge}
       setupCallout={callout}
-      headerActions={areaSwitch}
     >
       <StandaloneRecordRouter product="Boards" rail="wide" navigate={navigateBrowser}>
         <App
