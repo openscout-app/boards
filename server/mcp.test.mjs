@@ -43,6 +43,7 @@ test("the MCP server lists its tools and serves the view", async () => {
       const view = await c.call("resources/read", { uri });
       assert.equal(view.result.contents[0].mimeType, "text/html;profile=mcp-app");
       assert.doesNotMatch(view.result.contents[0].text, /<script[^>]+src=/, "the view is one file");
+      assert.doesNotMatch(view.result.contents[0].text, /<div data-scout-boot="board">/, "the embedded view has its own entry");
     }
     const state = await c.call("tools/call", { name: "api_read", arguments: { path: "/api/state" } });
     assert.equal(state.result.structuredContent.status, 200);

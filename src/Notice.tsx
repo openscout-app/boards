@@ -2,9 +2,9 @@
 import { useState, type ReactNode } from "react";
 import { Copy, Check } from "./icons";
 
-export function Notice({ title, children, quiet }: { title: string; children?: ReactNode; quiet?: boolean }) {
+export function Notice({ title, children, quiet, colophon }: { title: string; children?: ReactNode; quiet?: boolean; colophon?: boolean }) {
   return (
-    <div className={`notice${quiet ? " quiet" : ""}`} role="status">
+    <div className={`notice${quiet ? " quiet" : ""}${colophon ? " colophon" : ""}`} role="status">
       <h2>{title}</h2>
       {children}
     </div>
@@ -12,16 +12,24 @@ export function Notice({ title, children, quiet }: { title: string; children?: R
 }
 
 function Command({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    void navigator.clipboard?.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }, () => {});
+  const [result, setResult] = useState<"copied" | "failed" | null>(null);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setResult("copied");
+    } catch {
+      setResult("failed");
+    }
   };
   return (
-    <div className="command">
-      <code>{text}</code>
-      <button type="button" className="icon-btn" onClick={copy} aria-label={copied ? "Copied" : "Copy the command"} title={copied ? "Copied" : "Copy"}>
-        {copied ? <Check /> : <Copy />}
-      </button>
+    <div>
+      <div className="command">
+        <code>{text}</code>
+        <button type="button" className="btn primary" onClick={() => void copy()}>
+          {result === "copied" ? <><Check />Copied</> : <><Copy />Copy</>}
+        </button>
+      </div>
+      {result === "failed" && <p>Couldn’t copy. Select and copy the command manually.</p>}
     </div>
   );
 }

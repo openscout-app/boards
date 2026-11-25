@@ -2,15 +2,21 @@
 @import "@openscout/workspace-ui/tokens.css";
 
 :root {
+  --font-weight-body: 400;
+  --scout-pane-title-weight: 500;
+  --rail-max: 1228px;
+  --rail-gutter: 24px;
+  --action-height: 28px;
   --top-row: var(--scout-top-row);
   --pane-band: var(--scout-pane-band);
   /* the palette: light */
   color-scheme: light;
-  --bg: oklch(0.978 0.004 85);
-  --surface: oklch(0.992 0.003 85);
-  --ink: oklch(0.24 0.01 80);
-  --muted: oklch(0.47 0.014 80);
-  --accent: oklch(0.54 0.12 65);
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --ink: #18191c;
+  --soft: #55575e;
+  --faint: #8a8d94;
+  --accent: #b86e00;
   --green: oklch(0.64 0.16 155);
   --amber: oklch(0.62 0.14 70);
   --red: oklch(0.62 0.19 25);
@@ -19,11 +25,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --bg: oklch(0.118 0.004 260);
-    --surface: oklch(0.205 0.005 260);
-    --ink: oklch(0.975 0.006 260);
-    --muted: oklch(0.80 0.008 260);
-    --accent: oklch(0.78 0.12 75);
+    --bg: #0c0d10;
+    --surface: #12141a;
+    --ink: #eceef2;
+    --soft: #a3a6ad;
+    --faint: #6d7078;
+    --accent: #e8a33d;
     --green: oklch(0.80 0.15 155);
     --amber: oklch(0.82 0.15 85);
     --red: oklch(0.72 0.18 25);
@@ -31,11 +38,12 @@
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: oklch(0.118 0.004 260);
-  --surface: oklch(0.205 0.005 260);
-  --ink: oklch(0.975 0.006 260);
-  --muted: oklch(0.80 0.008 260);
-  --accent: oklch(0.78 0.12 75);
+  --bg: #0c0d10;
+  --surface: #12141a;
+  --ink: #eceef2;
+  --soft: #a3a6ad;
+  --faint: #6d7078;
+  --accent: #e8a33d;
   --green: oklch(0.80 0.15 155);
   --amber: oklch(0.82 0.15 85);
   --red: oklch(0.72 0.18 25);
@@ -43,8 +51,7 @@
 
 /* derived: one rule for both themes */
 :root {
-  --dim: color-mix(in srgb, var(--ink) 52%, var(--bg));
-  --faint: color-mix(in srgb, var(--ink) 36%, var(--bg));
+  --dim: var(--soft);
   --raised: color-mix(in srgb, var(--surface) 70%, var(--bg));
   --sunken: color-mix(in srgb, var(--ink) 4%, var(--bg));
   --hover: color-mix(in srgb, var(--ink) 6%, transparent);

@@ -14,7 +14,7 @@ import { renderNavCenter } from "@openscout/workspace-ui/tabs";
 import { prefs } from "./util";
 import type { RoomRef } from "./types";
 
-export const SETUP = "npx github:openscout-app/boards setup";
+const SETUP = "npx openscout-app/boards setup";
 
 type Pane = "kanban" | "room";
 export type Area = "conversations" | "board";
@@ -95,10 +95,10 @@ export function App({ src, initialBoard = "", initialRoom = "", only, actions, e
     body = <Notice title="Looking for the runtime" quiet />;
   } else if (!state.runtime.up) {
     body = (
-      <Notice title="Scout's runtime isn't running on this host.">
-        <p>Boards reads Scout's work from the runtime at {state.runtime.url.replace(/^https?:\/\//, "")}. Set Scout up, or start it, with:</p>
+      <Notice title="Scout's runtime isn't running on this host." colophon>
+        <p>Boards reads work from {state.runtime.url.replace(/^https?:\/\//, "")}. Run this command in a terminal to set up or start Scout.</p>
         <Notice.Command text={SETUP} />
-        <p className="dim">The page picks the runtime up by itself once it answers.</p>
+        <p className="dim">Boards reconnects automatically when the runtime is ready.</p>
       </Notice>
     );
   } else if (area === "board") {
@@ -136,9 +136,9 @@ export function App({ src, initialBoard = "", initialRoom = "", only, actions, e
           </div>
         ) : null}
         <span className="sp" />
-        {state ? (
-          <span role="status" className={`status${!unreachable && state.runtime.up ? " up" : ""}`} title={state.runtime.url}>
-            <span className="dot" />{unreachable ? "Disconnected" : state.runtime.up ? `Runtime${state.runtime.version ? ` ${state.runtime.version}` : ""}` : "No runtime"}
+        {state || (!embedded && !unreachable) ? (
+          <span role="status" className={`status${!unreachable && state?.runtime.up ? " up" : ""}`} title={state?.runtime.url}>
+            <span className="dot" />{unreachable ? "Disconnected" : state?.runtime.up ? `Runtime${state.runtime.version ? ` ${state.runtime.version}` : ""}` : state ? "No runtime" : "Loading board"}
           </span>
         ) : null}
         {actions}

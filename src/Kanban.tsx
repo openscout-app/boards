@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import type { Board, Card, Column, Read, RoomRef, State } from "./types";
 import type { Source } from "./source";
-import { ago, initials, label, ownerOf, trackerOf } from "./util";
+import { ago, harnessMark, initials, label, ownerOf, trackerOf } from "./util";
 import { More, Close, Thread } from "./icons";
 import { CardPanel, MoveDialog } from "./CardPanel";
 import { Notice } from "./Notice";
@@ -20,6 +20,7 @@ function CardView({ card, selected, onOpen, onMenu, menuOpen, draggable, room, o
   const at = card.lastMeaningfulAt ?? card.updatedAt ?? card.createdAt;
   const run = card.activeFlight;
   const owner = ownerOf(card);
+  const mark = harnessMark(run?.harness);
   // a card an outside tracker places moves there, not here
   const tracker = trackerOf(card);
   return (
@@ -34,6 +35,7 @@ function CardView({ card, selected, onOpen, onMenu, menuOpen, draggable, room, o
       onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onOpen(); } }}
     >
       <div className="card-title">{card.title}</div>
+      {card.source?.workItemId && <span className="ref ell" title={card.source.workItemId}>{card.source.workItemId}</span>}
       <div className="card-meta">
         {owner
           ? <span className="who" title={owner.detail}><span className="coin">{initials(owner.label)}</span><span className="ell">{owner.label}</span></span>
@@ -56,7 +58,8 @@ function CardView({ card, selected, onOpen, onMenu, menuOpen, draggable, room, o
       {run ? (
         <div className="card-run" title={run.sessionId || run.id}>
           <span className={`dot${RUN_STATES.has(String(run.state)) ? " live" : ""}`} />
-          <span className="ell">{[run.harness, label(run.state)].filter(Boolean).join(" · ") || "Run"}</span>
+          {mark && <span className="harness-mark" title={run.harness || undefined} aria-label={run.harness || undefined}>{mark}</span>}
+          <span className="ell">{[mark ? null : run.harness, label(run.state)].filter(Boolean).join(" · ") || "Run"}</span>
           {run.startedAt ? <span className="age">{ago(run.startedAt)}</span> : null}
         </div>
       ) : null}
@@ -160,7 +163,7 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
   const boards = board.boards;
 
   return (
-    <div className="kanban">
+    <div className={`kanban${compact ? " compact" : ""}`}>
       <div className="band">
         {boards.length > 1 ? (
           <BoardPicker boards={boards} id={board.board.id} onPick={onPickBoard} />
