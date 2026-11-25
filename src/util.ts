@@ -55,3 +55,17 @@ export function trackerOf(card: { source: { adapterId: string | null } | null })
 
 export const initials = (name: string | null | undefined) =>
   (name || "?").replace(/[^A-Za-z0-9 ]+/g, " ").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+
+/** Compact labels for Scout's known harnesses; other harness names stay readable. */
+export function harnessMark(harness: string | null | undefined): string | undefined {
+  switch (harness?.trim().toLowerCase()) {
+    case "claude":
+    case "claude-code": return "Cl";
+    case "codex": return "CX";
+    case "kimi":
+    case "kimi-code": return "Ki";
+    case "ag":
+    case "antigravity": return "AG";
+    default: return undefined;
+  }
+}

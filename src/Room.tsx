@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ScoutSideNav } from "@openscout/workspace-ui/react";
 import type { JobState, Post, Read, Room as RoomData, RoomRef, Run, State, Who } from "./types";
-import { ago, label, prefs, when } from "./util";
+import { ago, harnessMark, label, prefs, when } from "./util";
 import { Caret, Check, Tasks, Thread } from "./icons";
 import { Notice } from "./Notice";
 
@@ -100,7 +100,14 @@ export function RoomList({ rooms, current, onPick }: { rooms: RoomRef[]; current
 
 function WhoName({ who }: { who: Who | null }) {
   if (!who) return <span className="who-name dim">Someone</span>;
-  return <span className={`who-name k-${who.kind}`} title={who.detail}>{who.label}{who.harness ? <span className="faint"> · {who.harness}</span> : null}</span>;
+  const mark = harnessMark(who.harness);
+  return (
+    <span className="actor" title={who.detail}>
+      {mark && <span className="harness-mark" title={who.harness || undefined} aria-label={who.harness || undefined}>{mark}</span>}
+      <span className={`who-name k-${who.kind}`}>{who.label}</span>
+      {!mark && who.harness && <span className="dim">{who.harness}</span>}
+    </span>
+  );
 }
 
 const StateChip = ({ state }: { state: JobState }) => <span className={`chip s-${state}`}>{STATE_WORD[state]}</span>;
@@ -164,7 +171,8 @@ function RunBlock({ run }: { run: Run }) {
           <li key={j.taskId} className="job">
             <span className={`dot s-${j.state}`} title={STATE_WORD[j.state]} />
             <div className="job-main">
-              <div className="job-line"><span className="ell">{j.step}</span>{j.to ? <span className="job-to"><WhoName who={j.to} /></span> : null}</div>
+              <div className="job-line"><span className="job-title ell">{j.step}</span>{j.to ? <span className="job-to"><WhoName who={j.to} /></span> : null}</div>
+              <span className="ref ell" title={j.taskId}>{j.taskId}</span>
               {j.result ? <div className="job-result dim ell">{j.result}</div> : null}
             </div>
             <StateChip state={j.state} />

@@ -106,12 +106,12 @@ export function CardPanel({ src, board, card, onMove, toast }: {
         <Fact k="Part of">{card.parentTitle || card.parentId}</Fact>
         <Fact k="Run">{run ? `${[run.harness, label(run.state)].filter(Boolean).join(" · ")}${run.startedAt ? `, started ${ago(run.startedAt)} ago` : ""}` : null}</Fact>
         <Fact k="From">{card.source?.adapterId ? (card.source.url
-          ? <a href={card.source.url} target="_blank" rel="noreferrer">{card.source.adapterId}{card.source.workItemId ? ` ${card.source.workItemId}` : ""} <External /></a>
+          ? <a href={card.source.url} target="_blank" rel="noreferrer">{card.source.adapterId}{card.source.workItemId && <span className="ref">{card.source.workItemId}</span>} <External /></a>
           : `${card.source.adapterId}${card.source.workItemId ? ` ${card.source.workItemId}` : ""}`) : null}</Fact>
         <Fact k="Last change">{card.lastMeaningfulSummary ? `${card.lastMeaningfulSummary}${card.lastMeaningfulAt ? ` (${ago(card.lastMeaningfulAt)} ago)` : ""}` : null}</Fact>
         <Fact k="Updated">{when(card.updatedAt)}</Fact>
         <Fact k="Created">{when(card.createdAt)}</Fact>
-        <Fact k="Work id"><code>{card.workId}</code></Fact>
+        <Fact k="Work id"><code className="ref">{card.workId}</code></Fact>
       </dl>
       {tracker ? (
         <section className="panel-section">

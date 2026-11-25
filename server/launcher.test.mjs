@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
+import { existsSync, readFileSync } from "node:fs";
 import { hello, portOptions, start } from "./local.mjs";
 import { serve } from "./serve.mjs";
 
@@ -108,4 +109,15 @@ test("hello works offline; status distinguishes board reads from the dry-run wri
   runtime = fixture();
   await listen(runtime, runtimePort);
   assert.deepEqual(await status(), { listening: true, readable: true, writable: true, nodeId });
+});
+
+const builtPage = new URL("../dist/index.html", import.meta.url);
+test("the standalone build can paint its board before loading the app", { skip: !existsSync(builtPage) }, () => {
+  const html = readFileSync(builtPage, "utf8");
+  const boot = html.match(/<div id="root">\s*<div data-scout-boot="board">([\s\S]*?)<div data-scout-tools=/)?.[1];
+  assert.ok(boot, "the boot shell is inside the React root");
+  assert.match(boot, /Scout Boards/);
+  assert.equal((boot.match(/class="boot-column"/g) || []).length, 4);
+  assert.match(html, /prefers-reduced-motion: no-preference/);
+  assert.doesNotMatch(html, /<link[^>]+rel="stylesheet"/, "app CSS must not block the boot shell's first paint");
 });
