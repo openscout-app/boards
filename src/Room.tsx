@@ -2,7 +2,6 @@
 // each with its replies and its hand-offs; Tasks is its tasks, grouped by the plan that wrote them.
 // Text from the board is quoted source material, drawn as plain text.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ScoutSideNav } from "@openscout/workspace-ui/react";
 import type { JobState, Post, Read, Room as RoomData, RoomRef, Run, State, Who } from "./types";
 import { ago, harnessMark, label, prefs, when } from "./util";
 import { Caret, Check, Tasks, Thread } from "./icons";
@@ -77,7 +76,7 @@ export function RoomList({ rooms, current, onPick }: { rooms: RoomRef[]; current
     return [...m.values()];
   }, [rooms]);
   return (
-    <ScoutSideNav className="room-list" aria-label="Rooms">
+    <nav className="room-list" aria-label="Rooms">
       {groups.map((g) => (
         <section key={`${g.source}:${g.board}`} className="room-group" aria-label={g.board ? `${g.source}, ${g.board}` : g.source}>
           <div className="room-group-head">
@@ -85,7 +84,7 @@ export function RoomList({ rooms, current, onPick }: { rooms: RoomRef[]; current
             {g.board ? <span className="faint ell">{g.board}</span> : null}
           </div>
           {g.rooms.map((r) => (
-            <button key={r.conversationId} type="button" className="scout-nav-item room-row" aria-current={r.conversationId === current ? "page" : undefined}
+            <button key={r.conversationId} type="button" className="room-row" aria-current={r.conversationId === current ? "page" : undefined}
               onClick={() => onPick(r.conversationId)}>
               <span className="ell">{r.channel}</span>
               <span className="sp" />
@@ -94,7 +93,7 @@ export function RoomList({ rooms, current, onPick }: { rooms: RoomRef[]; current
           ))}
         </section>
       ))}
-    </ScoutSideNav>
+    </nav>
   );
 }
 

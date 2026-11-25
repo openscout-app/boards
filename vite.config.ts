@@ -1,7 +1,6 @@
+import react from "@vitejs/plugin-react-swc";
+import { defineScoutThinViteConfig, scoutAppResolveAliases } from "scout-app/vite";
 import { defineConfig, type Plugin } from "vite";
-import react from "@vitejs/plugin-react";
-// @ts-expect-error plain JS server module
-import { handle } from "./server/api.mjs";
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -17,10 +16,16 @@ function oneFile(): Plugin {
       for (const [name, file] of Object.entries(bundle)) {
         if (file.type === "chunk") {
           const code = file.code.replace(/<\/script/gi, "<\\/script");
-          html = html.replace(new RegExp(`<script[^>]*src="[^"]*${escape(file.fileName)}"[^>]*></script>`), () => `<script type="module">${code}</script>`);
+          html = html.replace(
+            new RegExp(`<script[^>]*src="[^"]*${escape(file.fileName)}"[^>]*></script>`),
+            () => `<script type="module">${code}</script>`,
+          );
           delete bundle[name];
         } else if (file.fileName.endsWith(".css")) {
-          html = html.replace(new RegExp(`<link[^>]*href="[^"]*${escape(file.fileName)}"[^>]*>`), () => `<style>${String(file.source)}</style>`);
+          html = html.replace(
+            new RegExp(`<link[^>]*href="[^"]*${escape(file.fileName)}"[^>]*>`),
+            () => `<style>${String(file.source)}</style>`,
+          );
           delete bundle[name];
         }
       }
@@ -29,23 +34,34 @@ function oneFile(): Plugin {
   };
 }
 
-export default defineConfig(({ mode }) => mode === "view"
-  ? {
-      plugins: [react(), oneFile()],
+export default defineConfig(({ mode }) => {
+  if (mode === "view") {
+    return {
+      clearScreen: false,
+      plugins: [react() as unknown as Plugin, oneFile()],
       publicDir: false,
+      resolve: {
+        alias: scoutAppResolveAliases(),
+      },
       build: {
         outDir: "dist/view",
         emptyOutDir: true,
         cssCodeSplit: false,
         modulePreload: false,
         assetsInlineLimit: 100_000_000,
-        rollupOptions: { input: "view.html", output: { inlineDynamicImports: true } },
+        rollupOptions: {
+          input: "view.html",
+          output: { inlineDynamicImports: true },
+        },
       },
-    }
-  : {
-      plugins: [
-        react(),
-        { name: "scout-boards-api", configureServer(server) { server.middlewares.use(async (req, res, next) => { if (!(await handle(req, res))) next(); }); } },
-      ],
-      server: { port: 4802, strictPort: true, host: "127.0.0.1" },
-    });
+    };
+  }
+
+  return defineScoutThinViteConfig({
+    product: "Boards",
+    variant: "board",
+    rail: "wide",
+    port: 4802,
+    serverEntry: "src/server.ts",
+  });
+});
