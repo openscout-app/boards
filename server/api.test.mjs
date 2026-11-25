@@ -34,6 +34,23 @@ test("the board comes shaped, with the board list", async () => {
   assert.equal(r.body.cards.find((c) => c.workId === "work-106").reviewPending, true);
 });
 
+test("paged boards keep whole-board counts and pass column continuation to Scout", async () => {
+  const board = fake.data.board;
+  const previous = board.page;
+  board.page = { totalCount: 507, columnCounts: { ready: 501 }, nextByColumn: { ready: "continue-ready" } };
+  try {
+    const read = await get("/api/board", { column: "ready", cursor: "continue-ready" });
+    assert.deepEqual(read.body.page, board.page);
+    const call = fake.calls.filter(c => c.path === "/v1/boards/scout.default").at(-1);
+    assert.deepEqual(call.query, { limit: "500", perColumn: "12", column: "ready", cursor: "continue-ready" });
+    assert.equal((await get("/api/board", { cursor: "unbound" })).status, 400);
+  } finally {
+    if (previous) board.page = previous;
+    else delete board.page;
+  }
+  assert.equal((await get("/api/board", { column: "ready", cursor: "continue-ready" })).body.error, "paging_unsupported");
+});
+
 test("a room comes folded, and an unknown one is a 404", async () => {
   const r = await get("/api/room", { conversationId: "conv-work" });
   assert.equal(r.status, 200);
@@ -127,6 +144,16 @@ test("a card from an outside tracker isn't moved or claimed from Scout", async (
   }
   assert.equal(sent(), before, "nothing reached the runtime");
   assert.equal((await post("/api/move", { workId: "work-101", to: "ready", dryRun: true })).status, 200, "Scout's own work still moves");
+});
+
+test("a cold claim checks the tracker of a card outside the board window", async () => {
+  const workId = "work-hidden-from-board";
+  fake.data.positions.set(workId, { workId, sourceAdapterId: "linear" });
+  const before = fake.calls.length;
+  const claim = await post("/api/claim", { workId });
+  assert.equal(claim.status, 409);
+  assert.match(claim.body.message, /Linear/);
+  assert.deepEqual(fake.calls.slice(before).map(c => c.path), ["/v1/work/lifecycles"]);
 });
 
 test("a runtime without the Board adapter has no rooms", async () => {

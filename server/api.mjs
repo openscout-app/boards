@@ -6,7 +6,7 @@
 import { randomUUID } from "node:crypto";
 import { APP, hello } from "./local.mjs";
 import { RuntimeDown, RuntimeError, health, rt } from "./runtime.mjs";
-import { pickBoard, shapeBoard, shapeBoards } from "./board.mjs";
+import { CARDS_PER_COLUMN, pickBoard, shapeBoard, shapeBoards } from "./board.mjs";
 import { defaultView, foldRoom, harnessesFrom, roomsFrom } from "./rooms.mjs";
 import { changed, events } from "./live.mjs";
 
@@ -42,13 +42,19 @@ export async function listBoards() {
   }
 }
 
-export async function readBoard(want) {
+export async function readBoard(want, column = null, cursor = null) {
+  need(cursor === null || column !== null, "A board cursor requires a column.");
   const boards = await listBoards();
   if (!boards) throw new Refused(404, "boards_unsupported", "This Scout's runtime doesn't serve boards.");
   const chosen = pickBoard(boards, want);
   if (!chosen) return { boards, board: null, columns: [], transitions: [], cards: [] };
   try {
-    const board = { boards, ...shapeBoard(await rt(`/v1/boards/${encodeURIComponent(chosen.id)}?limit=${BOARD_LIMIT}`)) };
+    const q = new URLSearchParams({ limit: String(BOARD_LIMIT), perColumn: String(CARDS_PER_COLUMN) });
+    if (column !== null) q.set("column", column);
+    if (cursor !== null) q.set("cursor", cursor);
+    const board = { boards, ...shapeBoard(await rt(`/v1/boards/${encodeURIComponent(chosen.id)}?${q}`)) };
+    if (!board.page && column !== null) throw new Refused(409, "paging_unsupported", "Update Scout to page through a column.");
+    if (!board.page && board.cards.length >= BOARD_LIMIT) board.partial = true;
     for (const c of board.cards) sourceOf.set(c.workId, c.source?.adapterId || null);
     await attachRooms(board.cards).catch(() => {});
     return board;
@@ -196,8 +202,22 @@ const sourceOf = new Map();
 
 async function trackerOf(workId) {
   if (!sourceOf.has(workId)) {
-    // a card this server hasn't read yet: read the boards once to learn where it comes from
-    for (const b of (await listBoards()) || []) await readBoard(b.id).catch(() => null);
+    // Cold tool calls can name a known work item outside the visible board window.
+    try {
+      const { position } = await rt(`/v1/work/lifecycles?workId=${encodeURIComponent(workId)}`);
+      if (position?.workId === workId && Object.hasOwn(position, "sourceAdapterId")) {
+        sourceOf.set(workId, position.sourceAdapterId);
+        return TRACKERS[position.sourceAdapterId] || null;
+      }
+    } catch (e) {
+      if (!(e instanceof RuntimeError && e.status === 404)) throw e;
+    }
+    // Older runtimes only expose the source on their board reads.
+    for (const b of (await listBoards()) || []) {
+      const raw = await rt(`/v1/boards/${encodeURIComponent(b.id)}?limit=${BOARD_LIMIT}`).catch(() => null);
+      for (const card of raw?.cards || []) sourceOf.set(card.workId, card.source?.adapterId || null);
+      if (sourceOf.has(workId)) break;
+    }
   }
   return TRACKERS[sourceOf.get(workId)] || null;
 }
@@ -249,7 +269,7 @@ export async function route(method, pathname, query = new URLSearchParams(), bod
       if (pathname === "/api/hello") return ok({ ...hello(), version: VERSION });
       if (pathname === "/api/status") return ok(await readiness());
       if (pathname === "/api/state") return ok(await readState());
-      if (pathname === "/api/board") return ok(await readBoard(query.get("id") || undefined));
+      if (pathname === "/api/board") return ok(await readBoard(query.get("id") || undefined, query.get("column"), query.get("cursor")));
       if (pathname === "/api/rooms") {
         const r = await listRooms();
         if (!r) throw new Refused(404, "rooms_unsupported", "This Scout's runtime has no Vercel Board adapter.");

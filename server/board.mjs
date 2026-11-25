@@ -68,6 +68,7 @@ export function shapeBoard(raw) {
   return {
     board: { id: str(b.id) || "", name: str(b.name) || str(b.id) || "Board", version: num(b.version), hash: str(b.hash), description: str(b.description) },
     columns, transitions, cards,
+    ...(Number.isSafeInteger(raw?.page?.totalCount) && { page: raw.page }),
   };
 }
 
@@ -77,17 +78,19 @@ export function targetsOf(board, card) {
   return [...new Set(ids)].map((id) => board.columns.find((c) => c.id === id)).filter(Boolean);
 }
 
-const CARDS_PER_COLUMN = 12;
+export const CARDS_PER_COLUMN = 12;
 
 /** The board for a model: columns with their newest cards, and counts. */
 export function boardForModel(board) {
   return {
     board: board.board.name,
-    cardCount: board.cards.length,
+    cardCount: board.page?.totalCount ?? board.cards.length,
+    ...(board.partial && { partial: true }),
     columns: board.columns.map((col) => {
       const cards = board.cards.filter((c) => c.column === col.id);
       return {
-        id: col.id, name: col.name, count: cards.length,
+        id: col.id, name: col.name, count: board.page?.columnCounts[col.id] ?? cards.length,
+        ...(board.page?.nextByColumn[col.id] && { nextCursor: board.page.nextByColumn[col.id] }),
         cards: cards.slice(0, CARDS_PER_COLUMN).map((c) => ({
           id: c.workId, title: c.title, owner: c.ownerName, reviewPending: c.reviewPending,
           running: c.activeFlight ? c.activeFlight.harness || true : false,
@@ -98,14 +101,16 @@ export function boardForModel(board) {
 }
 
 export function describeBoard(m) {
-  const lines = [`${m.board}: ${m.cardCount} ${m.cardCount === 1 ? "card" : "cards"}.`];
+  const lines = [`${m.board}: ${m.partial ? "at least " : ""}${m.cardCount} ${m.cardCount === 1 ? "card" : "cards"}.`];
   for (const col of m.columns) {
     if (!col.count) continue;
     lines.push("", `${col.name} (${col.count})`);
     for (const c of col.cards) {
       lines.push(`- ${c.title} [${c.id}]${c.owner ? `, ${c.owner}` : ""}${c.reviewPending ? ", review pending" : ""}${c.running ? ", running" : ""}`);
     }
-    if (col.count > col.cards.length) lines.push(`- and ${col.count - col.cards.length} more`);
+    if (col.count > col.cards.length) lines.push(`- showing ${col.cards.length} of ${col.count}`);
+    if (col.nextCursor) lines.push(`Next page: column=${col.id} cursor=${col.nextCursor}`);
   }
+  if (m.partial) lines.push("Column counts cover the loaded cards. Update Scout for complete counts and paging.");
   return lines.join("\n");
 }

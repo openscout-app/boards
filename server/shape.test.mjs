@@ -55,6 +55,13 @@ test("the board as text names its columns and counts", () => {
   assert.match(text, /Default/);
   assert.match(text, /In review/);
   assert.match(text, /Answer 404 from \/v1\/boards/);
+  const b = shapeBoard(fixtures(NOW).board);
+  b.page = { totalCount: 501, columnCounts: { ready: 495 }, nextByColumn: { ready: "after-12" } };
+  const model = boardForModel(b);
+  assert.match(describeBoard(model), /column=ready cursor=after-12/);
+  assert.equal(model.cardCount, 501);
+  assert.equal(model.columns.find(c => c.id === "ready").count, 495);
+  assert.equal(model.columns.find(c => c.id === "ready").nextCursor, "after-12");
 });
 
 test("rooms come from the mirrored channels, without the probe", () => {

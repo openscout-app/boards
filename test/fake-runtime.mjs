@@ -102,7 +102,7 @@ export function fixtures(now = Date.now()) {
   }];
   const endpoints = [{ agentId: "builder.boards", harness: "claude", state: "active" }, { agentId: "designer.boards", harness: "codex", state: "active" }];
   const moves = [{ id: "move-31", itemId: "work-106", from: "working", to: "review", moverId: "builder.boards", verdict: "allow", note: "Handled the 404 and the copy.", revision: 4, review: "pending", createdAt: at(1) }];
-  return { board, messages, handoffs, connections, endpoints, moves };
+  return { board, messages, handoffs, connections, endpoints, moves, positions: new Map() };
 }
 
 /** Start the fake on `port` (0 for any). It resolves to { url, close, calls, data }. */
@@ -146,6 +146,9 @@ export function fakeRuntime({ port = 0, boards = true, rooms = true, now } = {})
       return send(res, 200, { handoffs: task ? data.handoffs.filter((h) => h.taskId === task) : data.handoffs });
     }
     if (p === "/v1/endpoints") return send(res, 200, { endpoints: data.endpoints });
+    if (p === "/v1/work/lifecycles" && data.positions.has(u.searchParams.get("workId"))) {
+      return send(res, 200, { position: data.positions.get(u.searchParams.get("workId")) });
+    }
     if (p === "/v1/work/moves") return send(res, 200, { moves: data.moves.filter((m) => m.itemId === u.searchParams.get("workId")) });
     if (p === "/v1/work/move" && req.method === "POST") {
       const c = data.board.cards.find((x) => x.workId === body.workId);

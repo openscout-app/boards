@@ -8,7 +8,7 @@ import { ago, harnessMark, initials, label, ownerOf, trackerOf } from "./util";
 import { More, Close, Thread } from "./icons";
 import { CardPanel, MoveDialog } from "./CardPanel";
 import { Notice } from "./Notice";
-import { targetsOf } from "./board";
+import { cardsWithColumnPage, targetsOf } from "./board";
 
 const RUN_STATES = new Set(["running", "working", "active", "queued", "waking", "starting"]);
 
@@ -98,6 +98,36 @@ function MoveMenu({ targets, onPick, onClose }: { targets: Column[]; onPick: (c:
   );
 }
 
+type ColumnPosition = { boardId: string; column: string; cursor: string };
+
+/** Keep the other columns live while the operator reads an older page in one column. */
+function useColumnPage(src: Source, head: Board | null) {
+  const [position, setPosition] = useState<ColumnPosition | null>(null);
+  const [result, setResult] = useState<{ position: ColumnPosition; board?: Board; error?: string } | null>(null);
+  const active = position?.boardId === head?.board?.id ? position : null;
+  useEffect(() => {
+    if (!active) return;
+    let cancelled = false;
+    const q = new URLSearchParams({ id: active.boardId, column: active.column, cursor: active.cursor });
+    let timer: number;
+    const refresh = async () => {
+      const answer = await src.get<Board>(`/api/board?${q}`);
+      if (cancelled) return;
+      setResult(answer.status === 200 ? { position: active, board: answer.body }
+        : { position: active, error: answer.body.message || "Could not load this column." });
+      timer = window.setTimeout(refresh, 10000);
+    };
+    void refresh();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [src, active, head]);
+  const response = active && result?.position === active ? result : null;
+  const board = useMemo(() => {
+    if (!head || !active || !response?.board) return head;
+    return { ...head, cards: cardsWithColumnPage(head.cards, active.column, response.board.cards) };
+  }, [head, active, response]);
+  return { board, active, response, setPosition };
+}
+
 export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact, rooms = [], onOpenRoom }: {
   src: Source; state: State; read: Read<Board> | null; boardId: string; onPickBoard: (id: string) => void;
   toast: (text: string, tone?: "ok" | "warn") => void; compact?: boolean;
@@ -109,12 +139,14 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
   const [menu, setMenu] = useState<string | null>(null);
   const [moving, setMoving] = useState<{ card: Card; to: Column } | null>(null);
   const [over, setOver] = useState<string | null>(null);
-  const board = read?.ok && read.key === boardId ? read.data : null;
+  const head = read?.ok && read.key === boardId ? read.data : null;
+  const { board, active, response, setPosition } = useColumnPage(src, head);
   const activeBoard = boardId || board?.board?.id;
   const [interactionBoard, setInteractionBoard] = useState(activeBoard);
   // Discard the old board's interactions before React commits the new board.
   if (interactionBoard !== activeBoard) {
     setInteractionBoard(activeBoard);
+    setPosition(null);
     setSelected(null);
     setMenu(null);
     setMoving(null);
@@ -159,8 +191,9 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
     if (c && tracker) { toast(`This card moves on ${tracker}.`, "warn"); return; }
     if (c && c.column !== to.id) setMoving({ card: c, to });
   };
-  const empty = !board.cards.length;
+  const empty = !active && (board.page?.totalCount ?? board.cards.length) === 0;
   const boards = board.boards;
+  const total = board.page?.totalCount ?? board.cards.length;
 
   return (
     <div className={`kanban${compact ? " compact" : ""}`}>
@@ -168,13 +201,15 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
         {boards.length > 1 ? (
           <BoardPicker boards={boards} id={board.board.id} onPick={onPickBoard} />
         ) : <span className="band-title">{board.board.name}</span>}
-        <span className="band-count" title={`${board.cards.length} cards`}>{board.cards.length}</span>
+        <span className="band-count" title={board.partial ? "Loaded cards. Update Scout for complete counts." : `${total} cards`}>{total}{board.partial ? "+" : ""}</span>
         {board.board.description && !compact ? <span className="band-note ell">{board.board.description}</span> : null}
       </div>
       <div className="kanban-body">
         <div className="columns" aria-label={board.board.name}>
           {board.columns.map((col) => {
-            const cards = byColumn.get(col.id) || [];
+            const browsing = active?.column === col.id;
+            const cards = browsing && !response?.board ? [] : byColumn.get(col.id) || [];
+            const next = (browsing ? response?.board : board)?.page?.nextByColumn[col.id];
             return (
               <section key={col.id} className={`column${over === col.id ? " over" : ""}`} aria-label={col.name} data-scout-point={col.id} data-scout-label={col.name}
                 onDragOver={(e) => { if (e.dataTransfer.types.includes("text/x-scout-work")) { e.preventDefault(); setOver(col.id); } }}
@@ -182,9 +217,12 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
                 onDrop={(e) => drop(e, col)}>
                 <header className="column-head" title={col.purpose || undefined}>
                   <span className="name">{col.name}</span>
-                  <span className="n">{cards.length}</span>
+                  <span className="n">{board.page?.columnCounts[col.id] ?? cards.length}{board.partial ? "+" : ""}</span>
                 </header>
                 <div className="column-body">
+                  {browsing && <button type="button" className="chip line" onClick={() => setPosition(null)}>Newest cards</button>}
+                  {browsing && !response?.board && <p role="status">{response?.error || "Loading cards…"}</p>}
+                  {browsing && response?.board && !cards.length && <p role="status">No older cards in this column.</p>}
                   {cards.map((c) => (
                     <div key={c.workId} className="card-slot">
                       <CardView card={c} selected={c.workId === selected} draggable={!compact}
@@ -194,6 +232,7 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
                       {menu === c.workId ? <MoveMenu targets={targetsOf(board, c)} onClose={() => setMenu(null)} onPick={(to) => { setMenu(null); setMoving({ card: c, to }); }} /> : null}
                     </div>
                   ))}
+                  {next && <button type="button" className="chip line" onClick={() => setPosition({ boardId: board.board!.id, column: col.id, cursor: next })}>Older cards</button>}
                 </div>
               </section>
             );
