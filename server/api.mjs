@@ -202,24 +202,21 @@ const sourceOf = new Map();
 
 async function trackerOf(workId) {
   if (!sourceOf.has(workId)) {
-    // A direct tool call can name a card that this server hasn't displayed yet.
-    for (const b of (await listBoards()) || []) {
-      const path = `/v1/boards/${encodeURIComponent(b.id)}`;
-      const query = new URLSearchParams({ limit: String(BOARD_LIMIT), perColumn: String(BOARD_LIMIT) });
-      const first = await rt(`${path}?${query}`);
-      let card = first.cards?.find(c => c.workId === workId);
-      for (const [column, start] of Object.entries(first.page?.nextByColumn ?? {})) {
-        let cursor = start;
-        query.set("column", column);
-        while (cursor && !card) {
-          query.set("cursor", cursor);
-          const page = await rt(`${path}?${query}`);
-          card = page.cards?.find(c => c.workId === workId);
-          cursor = page.page?.nextByColumn[column];
-        }
-        if (card) break;
+    // Cold tool calls can name a known work item outside the visible board window.
+    try {
+      const { position } = await rt(`/v1/work/lifecycles?workId=${encodeURIComponent(workId)}`);
+      if (position?.workId === workId && Object.hasOwn(position, "sourceAdapterId")) {
+        sourceOf.set(workId, position.sourceAdapterId);
+        return TRACKERS[position.sourceAdapterId] || null;
       }
-      if (card) { sourceOf.set(workId, card.source?.adapterId || null); break; }
+    } catch (e) {
+      if (!(e instanceof RuntimeError && e.status === 404)) throw e;
+    }
+    // Older runtimes only expose the source on their board reads.
+    for (const b of (await listBoards()) || []) {
+      const raw = await rt(`/v1/boards/${encodeURIComponent(b.id)}?limit=${BOARD_LIMIT}`).catch(() => null);
+      for (const card of raw?.cards || []) sourceOf.set(card.workId, card.source?.adapterId || null);
+      if (sourceOf.has(workId)) break;
     }
   }
   return TRACKERS[sourceOf.get(workId)] || null;

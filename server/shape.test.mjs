@@ -58,6 +58,7 @@ test("the board as text names its columns and counts", () => {
   const b = shapeBoard(fixtures(NOW).board);
   b.page = { totalCount: 501, columnCounts: { ready: 495 }, nextByColumn: { ready: "after-12" } };
   const model = boardForModel(b);
+  assert.match(describeBoard(model), /column=ready cursor=after-12/);
   assert.equal(model.cardCount, 501);
   assert.equal(model.columns.find(c => c.id === "ready").count, 495);
   assert.equal(model.columns.find(c => c.id === "ready").nextCursor, "after-12");

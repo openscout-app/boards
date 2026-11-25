@@ -146,6 +146,16 @@ test("a card from an outside tracker isn't moved or claimed from Scout", async (
   assert.equal((await post("/api/move", { workId: "work-101", to: "ready", dryRun: true })).status, 200, "Scout's own work still moves");
 });
 
+test("a cold claim checks the tracker of a card outside the board window", async () => {
+  const workId = "work-hidden-from-board";
+  fake.data.positions.set(workId, { workId, sourceAdapterId: "linear" });
+  const before = fake.calls.length;
+  const claim = await post("/api/claim", { workId });
+  assert.equal(claim.status, 409);
+  assert.match(claim.body.message, /Linear/);
+  assert.deepEqual(fake.calls.slice(before).map(c => c.path), ["/v1/work/lifecycles"]);
+});
+
 test("a runtime without the Board adapter has no rooms", async () => {
   const bare = await fakeRuntime({ rooms: false });
   use(bare);

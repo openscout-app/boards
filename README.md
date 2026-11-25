@@ -42,6 +42,9 @@ tool accepts a column ID and the `nextCursor` returned for it. Older runtimes
 serve one shared window of up to 500 cards. A plus sign marks counts that may
 be incomplete.
 
+Counts follow the runtime's live window. As cards move or completed cards age
+out, the count and the contents of an older page can change.
+
 ## Commands
 
 ```sh
@@ -91,6 +94,7 @@ database and writes no record itself.
 | `GET /v1/boards`, `GET /v1/boards/:id` | The boards and their cards. A 404 means the runtime is too old |
 | `POST /v1/work/move`, `/v1/work/review`, `/v1/work/claim` | Moves (with `dryRun` for the preview), reviews and claims, as the operator |
 | `GET /v1/work/moves` | A card's moves, for review |
+| `GET /v1/work/lifecycles?workId=…` | The tracker that owns a card, including cards outside the current page |
 | `GET /v1/events/stream` | Changes, so the page updates as work moves |
 | `GET /v1/integrations/vercel-board/*`, `GET /v1/endpoints` | Board rooms, their posts and hand-offs |
 

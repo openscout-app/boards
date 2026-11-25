@@ -8,7 +8,7 @@ import { ago, harnessMark, initials, label, ownerOf, trackerOf } from "./util";
 import { More, Close, Thread } from "./icons";
 import { CardPanel, MoveDialog } from "./CardPanel";
 import { Notice } from "./Notice";
-import { targetsOf } from "./board";
+import { cardsWithColumnPage, targetsOf } from "./board";
 
 const RUN_STATES = new Set(["running", "working", "active", "queued", "waking", "starting"]);
 
@@ -119,12 +119,11 @@ function useColumnPage(src: Source, head: Board | null) {
     };
     void refresh();
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [src, active]);
+  }, [src, active, head]);
   const response = active && result?.position === active ? result : null;
   const board = useMemo(() => {
     if (!head || !active || !response?.board) return head;
-    const page = response.board;
-    return { ...head, cards: [...head.cards.filter(card => card.column !== active.column), ...page.cards.filter(card => card.column === active.column)] };
+    return { ...head, cards: cardsWithColumnPage(head.cards, active.column, response.board.cards) };
   }, [head, active, response]);
   return { board, active, response, setPosition };
 }
@@ -192,7 +191,7 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
     if (c && tracker) { toast(`This card moves on ${tracker}.`, "warn"); return; }
     if (c && c.column !== to.id) setMoving({ card: c, to });
   };
-  const empty = !board.cards.length;
+  const empty = !active && (board.page?.totalCount ?? board.cards.length) === 0;
   const boards = board.boards;
   const total = board.page?.totalCount ?? board.cards.length;
 
@@ -223,6 +222,7 @@ export function Kanban({ src, state, read, boardId, onPickBoard, toast, compact,
                 <div className="column-body">
                   {browsing && <button type="button" className="chip line" onClick={() => setPosition(null)}>Newest cards</button>}
                   {browsing && !response?.board && <p role="status">{response?.error || "Loading cards…"}</p>}
+                  {browsing && response?.board && !cards.length && <p role="status">No older cards in this column.</p>}
                   {cards.map((c) => (
                     <div key={c.workId} className="card-slot">
                       <CardView card={c} selected={c.workId === selected} draggable={!compact}

@@ -109,6 +109,7 @@ export function describeBoard(m) {
       lines.push(`- ${c.title} [${c.id}]${c.owner ? `, ${c.owner}` : ""}${c.reviewPending ? ", review pending" : ""}${c.running ? ", running" : ""}`);
     }
     if (col.count > col.cards.length) lines.push(`- showing ${col.cards.length} of ${col.count}`);
+    if (col.nextCursor) lines.push(`Next page: column=${col.id} cursor=${col.nextCursor}`);
   }
   if (m.partial) lines.push("Column counts cover the loaded cards. Update Scout for complete counts and paging.");
   return lines.join("\n");
