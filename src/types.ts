@@ -32,6 +32,8 @@ export type Board = {
   columns: Column[];
   transitions: Array<{ from: string; to: string; name: string | null }>;
   cards: Card[];
+  page?: { totalCount: number; columnCounts: Record<string, number>; nextByColumn: Record<string, string> };
+  partial?: boolean;
 };
 
 export type Who = { kind: "operator" | "agent" | "person"; label: string; detail: string; harness: string | null };

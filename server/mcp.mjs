@@ -31,7 +31,7 @@ const TOOLS = [
     name: "work_board",
     title: "Work board",
     description: "Show Scout's work board (Kanban) on this host: the board's columns, with the work items as cards. The person can open a card, move it (the runtime checks each move first), review a move or claim work from the view. Returns the columns and cards as text too. The person sees the view in the thread, so answer in a sentence or two instead of listing it back, and end the reply with the result's `boardsUrl` on its own line when there is one: it opens the Kanban and the Board rooms side by side in a browser.",
-    inputSchema: { type: "object", properties: { board: { type: "string", description: "Optional. A board id; without one, the default board." } } },
+    inputSchema: { type: "object", properties: { board: { type: "string", description: "Optional. A board id; without one, the default board." }, column: { type: "string", description: "Limit the cards to this column." }, cursor: { type: "string", description: "The column nextCursor from a previous result." } } },
     annotations: { readOnlyHint: true },
     _meta: { ui: { resourceUri: VIEW_URI } },
   },
@@ -79,7 +79,11 @@ function unavailable(r) {
 
 async function callTool(name, args = {}) {
   if (name === "work_board") {
-    const r = await route("GET", "/api/board", new URLSearchParams(args.board ? { id: String(args.board) } : {}));
+    const query = new URLSearchParams();
+    if (args.board) query.set("id", String(args.board));
+    if (args.column) query.set("column", String(args.column));
+    if (args.cursor) query.set("cursor", String(args.cursor));
+    const r = await route("GET", "/api/board", query);
     const url = await boardsUrl({ board: r.body?.board?.id || args.board });
     if (r.status !== 200) {
       const text = unavailable(r);
@@ -90,6 +94,7 @@ async function callTool(name, args = {}) {
       return { content: [{ type: "text", text }], structuredContent: { kind: "work-board", boardsUrl: url, note: text } };
     }
     const board = boardForModel(r.body);
+    if (args.column) board.columns = board.columns.filter(col => col.id === args.column);
     const note = `The person sees this board in the thread. Don't list its columns or cards back; answer what they asked in a sentence or two.${besideLine(url)}`;
     return {
       content: [{ type: "text", text: `${describeBoard(board)}\n\n${note}` }],

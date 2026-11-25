@@ -36,6 +36,12 @@ Boards needs Node 20 or later.
 | No Board connected | `scout integration connect vercel-board --team <team> --credential env:VERCEL_TOKEN` |
 | Nothing on this board yet | Work items the runtime places on the board show up as they arrive |
 
+Boards shows the newest 12 cards in each column alongside the full column count.
+Use **Older cards** to read the next page in that column. The `work_board` MCP
+tool accepts a column ID and the `nextCursor` returned for it. Older runtimes
+serve one shared window of up to 500 cards. A plus sign marks counts that may
+be incomplete.
+
 ## Commands
 
 ```sh
